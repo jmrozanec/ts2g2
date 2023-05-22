@@ -8,5 +8,7 @@ A scalable time series generator.
 ## TODO
  - [X] create graph from time series
  - [X] generate time series from graph
+ - [ ] specify time granularity, level of compression, include jittering
+ - [ ] how can we capture correlations between stocks, commodities, etc? Generate ts and consider correlations.
  - [ ] create library of possible graphs/time-series
  - [ ] create a DSL, so that we can read a ts, leverage existing library, consider black swan events, etc.
