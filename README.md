@@ -2,8 +2,18 @@
 A scalable time series generator.
 
     vertexes = given_file().with_timestamps_column().with_values_column().generate_graph()
-    ts = given_graph(vertexes).with_start_value(random/someval).generate_time_series(how_many, how_long)
-    #ts = given_graph(vertexes).with_start_value(random/someval).with_black_swans(n, length).generate_time_series(how_many, how_long)
+    ts = given_graph(vertexes)
+       .with_start_value(random/someval)
+       .generate_time_series(how_many, how_long)
+    #ts = given_graph(vertexes)
+       .with_start_value(random/someval)
+       .with_black_swans(n, length)
+       .generate_time_series(how_many, how_long)
+
+    #- withNormalEvolution(years(5))
+    #- withBlackSwanEvent(epidemic(), years(2))
+    #- withRecovery(months(6))
+    #- withNormalEvolution(years(2))
 
 ## TODO
  - [X] create graph from time series
