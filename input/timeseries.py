@@ -46,7 +46,24 @@ def natural_visibility_graph(timeseries):
            National Academy of Sciences 105, no. 13 (2008): 4972-4975.
            https://www.pnas.org/doi/10.1073/pnas.0709247105
     """
-    return nx.visibility_graph(timeseries)
+    G = nx.path_graph(len(timeseries))
+    nx.set_node_attributes(G, dict(enumerate(timeseries)), "value")
+
+    # Check all combinations of nodes n series
+    for (x1, y1), (x2, y2) in itertools.combinations(enumerate(timeseries), 2):
+        # check if any value between obstructs line of sight
+        slope = (y2 - y1) / (x2 - x1)
+        offset = y2 - slope * x2
+
+        obstructed = any(
+            y >= slope * x + offset
+            for x, y in enumerate(timeseries[x1 + 1: x2], start=x1 + 1)
+        )
+
+        if not obstructed:
+            G.add_edge(x1, x2)
+
+    return G
 
 
 def horizontal_visibility_graph(timeseries):
@@ -94,14 +111,14 @@ def horizontal_visibility_graph(timeseries):
     nx.set_node_attributes(G, dict(enumerate(timeseries)), "value")
 
     # Check all combinations of nodes n series
-    for (n1, t1), (n2, t2) in itertools.combinations(enumerate(timeseries), 2):
+    for (x1, y1), (x2, y2) in itertools.combinations(enumerate(timeseries), 2):
         obstructed = any(
-            t >= max(t1, t2)
-            for n, t in enumerate(timeseries[n1 + 1 : n2], start=n1 + 1)
+            y >= max(y1, y2)
+            for x, y in enumerate(timeseries[x1 + 1 : x2], start=x1 + 1)
         )
 
         if not obstructed:
-            G.add_edge(n1, n2)
+            G.add_edge(x1, x2)
 
     return G
 
@@ -110,7 +127,7 @@ def directed_horizontal_visibility_graph(timeseries):
     """
     Return a Directed Horizontal Visibility Graph of an input Time Series.
 
-    The Horizontal Visibility Graph converts a time series into a graph.
+    The Directed Horizontal Visibility Graph converts a time series into a graph.
     The constructed graph uses integer nodes to indicate which event in the series the node represents.
     The edges are formed as follows: consider a bar plot of the series and view that
     as a side view of a landscape with a node at the top of each bar. An edge
@@ -151,22 +168,20 @@ def directed_horizontal_visibility_graph(timeseries):
     nx.set_node_attributes(G, dict(enumerate(timeseries)), "value")
 
     # Check all combinations of nodes n series
-    for (n1, t1), (n2, t2) in itertools.combinations(enumerate(timeseries), 2):
+    for (x1, y1), (x2, y2) in itertools.combinations(enumerate(timeseries), 2):
         obstructed = any(
-            t >= max(t1, t2)
-            for n, t in enumerate(timeseries[n1 + 1 : n2], start=n1 + 1)
+            t >= max(x1, x2)
+            for x, y in enumerate(timeseries[x1 + 1 : x2], start=x1 + 1)
         )
 
         if not obstructed:
-            G.add_edge(n1, n2)
+            G.add_edge(x1, x2)
 
     return G
 
-=================
-
 def limited_penetrable_natural_visibility_graph(timeseries, l=1):
     """
-    Return a Natural Visibility Graph of an input Time Series.
+    Return a Limited Penetrable Natural Visibility Graph of an input Time Series.
 
     A visibility graph converts a time series into a graph. The constructed graph
     uses integer nodes to indicate which event in the series the node represents.
@@ -205,7 +220,24 @@ def limited_penetrable_natural_visibility_graph(timeseries, l=1):
            National Academy of Sciences 105, no. 13 (2008): 4972-4975.
            https://www.pnas.org/doi/10.1073/pnas.0709247105
     """
-    return nx.visibility_graph(timeseries)
+    G = nx.path_graph(len(timeseries))
+    nx.set_node_attributes(G, dict(enumerate(timeseries)), "value")
+
+    # Check all combinations of nodes n series
+    for (x1, y1), (x2, y2) in itertools.combinations(enumerate(timeseries), 2):
+        # check if any value between obstructs line of sight
+        slope = (y2 - y1) / (x2 - x1)
+        offset = y2 - slope * x2
+
+        obstructed = any(
+            y >= slope * x + offset
+            for x, y in enumerate(timeseries[x1 + l + 1: x2], start=x1 + l + 1)
+        )
+
+        if not obstructed:
+            G.add_edge(x1, x2)
+
+    return G
 
 
 def limited_penetrable_horizontal_visibility_graph(timeseries, l=1):
@@ -253,14 +285,14 @@ def limited_penetrable_horizontal_visibility_graph(timeseries, l=1):
     nx.set_node_attributes(G, dict(enumerate(timeseries)), "value")
 
     # Check all combinations of nodes n series
-    for (n1, t1), (n2, t2) in itertools.combinations(enumerate(timeseries), 2):
+    for (x1, y1), (x2, y2) in itertools.combinations(enumerate(timeseries), 2):
         obstructed = any(
-            (t >= max(t1, t2)) and (n-n1 <= l)
-            for n, t in enumerate(timeseries[n1 + 1 : n2], start=n1 + 1)
+            y >= max(y1, y2)
+            for x, y in enumerate(timeseries[x1 + l + 1: x2], start=x1 + l + 1)
         )
 
         if not obstructed:
-            G.add_edge(n1, n2)
+            G.add_edge(x1, x2)
 
     return G
 
