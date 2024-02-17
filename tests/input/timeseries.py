@@ -1,6 +1,6 @@
 import unittest
 import networkx as nx
-from input import timeseries
+from timeseries import strategies
 
 class TimeseriesTest(unittest.TestCase):
     def test_natural_visibility_graph(self):
