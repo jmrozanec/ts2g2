@@ -23,5 +23,7 @@ Many of the methods implemented in this library, are described in _Silva, Vaness
 
 ### Graphs to timeseries conversion
 
+Graphs are converted back to timeseries by sampling node values from the graph following different strategies. The following strategies have been implemented so far:
 
+ - 
 
