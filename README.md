@@ -25,5 +25,10 @@ Many of the methods implemented in this library, are described in _Silva, Vaness
 
 Graphs are converted back to timeseries by sampling node values from the graph following different strategies. The following strategies have been implemented so far:
 
- - 
+ - random node
+ - random node neighbour
+ - random node degree 
+ - random walk
+ - random walk with restart
+ - random walk with jump
 
