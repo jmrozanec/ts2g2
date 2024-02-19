@@ -5,7 +5,7 @@ TS2G<sup>2</sup> stands for "timeseries to graphs and back". The library impleme
     stream = TimeseriesArrayStream([2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3])
     timeseries = Timeseries(stream)
     g = timeseries.to_graph(NaturalVisibilityGraphStrategy())
-    sequence = g.to_sequence(RandomWalkGenerationStrategy(), sequence_length=500)
+    sequence = g.to_sequence(RandomWalkSequenceGenerationStrategy(), sequence_length=500)
 
 Many of the methods implemented in this library, are described in _Silva, Vanessa Freitas, et al. "Time series analysis via network science: Concepts and algorithms." Wiley Interdisciplinary Reviews: Data Mining and Knowledge Discovery 11.3 (2021): e1404._ Nevertheless, the library also includes additional techniques found in other works from the scientific literature.
 
