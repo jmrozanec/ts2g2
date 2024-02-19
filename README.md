@@ -1,4 +1,4 @@
-# TS2G<sup>2</sup>
+# ts2g<sup>2</sup>
 
 TS2G<sup>2</sup> stands for "timeseries to graphs and back". The library implements a variety of strategies to convert timeseries into graphs, and convert graphs into sequences.
 
