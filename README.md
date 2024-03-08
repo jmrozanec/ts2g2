@@ -32,7 +32,3 @@ Graphs are converted back to timeseries by sampling node values from the graph f
  - random walk with restart
  - random walk with jump
 
-# Building and publishing to PyPI
-
- - python -m build
- - python -m twine upload --repository testpypi dist/*
