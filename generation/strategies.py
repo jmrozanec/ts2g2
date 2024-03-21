@@ -1,6 +1,8 @@
 import random
 
-from core.model import GraphToTimeseriesStrategy
+class GraphToTimeseriesStrategy:
+    def to_sequence(self, graph, sequence_length):
+        return None
 
 class RandomNodeSequenceGenerationStrategy(GraphToTimeseriesStrategy):
     def to_sequence(self, graph, sequence_length):
@@ -68,25 +70,6 @@ class RandomWalkWithRestartSequenceGenerationStrategy(GraphToTimeseriesStrategy)
                 nodes = [n for n in graph.neighbors(node)]
                 if len(nodes) == 0:
                     node = first_node
-                else:
-                    node = random.choice(nodes)
-
-        return sequence
-
-class RandomWalkWithRestartSequenceGenerationStrategy(GraphToTimeseriesStrategy):
-    def to_sequence(self, graph, sequence_length):
-        sequence = []
-        nodes = [n for n in graph.nodes()]
-        first_node = random.choice(nodes)
-        node = first_node
-        while len(sequence) < sequence_length:
-            sequence = sequence + [graph.nodes[node]['value']]
-            if random.random() <0.15:
-                node = random.choice([n for n in graph.nodes()])
-            else:
-                nodes = [n for n in graph.neighbors(node)]
-                if len(nodes) == 0:
-                    node = random.choice([n for n in graph.nodes()])
                 else:
                     node = random.choice(nodes)
 
