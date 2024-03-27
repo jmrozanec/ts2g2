@@ -1,18 +1,20 @@
 """
 Time series graphs
 """
-import itertools
+from core.model import TimeseriesGraph
 import networkx as nx
+import itertools
 import math
 
-from core.model import TimeseriesGraph
 
 class EdgeWeightingStrategy:
     def weight(self, G, x1, x2, y1, y2):
         return None
 
+
 class EdgeWeightingStrategyAngle(EdgeWeightingStrategy):
     absolute_value = True
+
     def __init__(self, absolute_value):
         self.absolute_value = absolute_value
 
@@ -23,16 +25,19 @@ class EdgeWeightingStrategyAngle(EdgeWeightingStrategy):
             return abs(angle)
         return angle
 
+
 class EdgeWeightingStrategyNull(EdgeWeightingStrategy):
     def weight_edge(self, G, x1, x2, y1, y2):
         return None
+
 
 class TimeseriesToGraphStrategy:
     visibility_constraints = []
     graph_type = "undirected"
     edge_weighting_strategy = EdgeWeightingStrategyNull()
 
-    def __init__(self, visibility_constraints, graph_type="undirected", edge_weighting_strategy=EdgeWeightingStrategyNull()):
+    def __init__(self, visibility_constraints, graph_type="undirected",
+                 edge_weighting_strategy=EdgeWeightingStrategyNull()):
         self.visibility_constraints = visibility_constraints
         self.graph_type = graph_type
         self.edge_weighting_strategy = edge_weighting_strategy
@@ -60,14 +65,14 @@ class TimeseriesToGraphStrategy:
                 NetworkX Graph
                     The Natural Visibility Graph of the timeseries time series
 
-                Examples
-                --------
-                >>> stream = TimeseriesArrayStream([2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3])
-                >>> timeseries = Timeseries(stream)
-                >>> ts2g = TimeseriesToGraphStrategy([TimeseriesEdgeVisibilityConstraintsNatural()], "undirected", EdgeWeightingStrategyNull())
-                >>> g = ts2g.to_graph(stream)
-                >>> print(g)
-                """
+            Examples
+            --------
+            >>> stream = TimeseriesArrayStream([2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3])
+            >>> timeseries = Timeseries(stream)
+            >>> ts2g = TimeseriesToGraphStrategy([TimeseriesEdgeVisibilityConstraintsNatural()], "undirected", EdgeWeightingStrategyNull())
+            >>> g = ts2g.to_graph(stream)
+            >>> print(g)
+        """
         timeseries = timeseries_stream.read()
 
         G = nx.path_graph(len(timeseries), create_using=self.initialize_graph(self.graph_type))
@@ -88,9 +93,8 @@ class TimeseriesToGraphStrategy:
                     G.add_edge(x1, x2)
 
         return TimeseriesGraph(G)
-
     def initialize_graph(self, graph_type):
-        if(graph_type=="undirected"):
+        if (graph_type == "undirected"):
             return nx.Graph()
         return nx.DiGraph()
 
@@ -99,14 +103,10 @@ class TimeseriesEdgeVisibilityConstraints:
     def is_obstructed(self, timeseries, x1, x2, y1, y2):
         return None
 
+
 class EdgeAdditionStrategy:
     def add_edge(self, G, x1, x2, weight=None):
         return None
-
-
-
-
-
 
 
 class TimeseriesEdgeVisibilityConstraintsNatural(TimeseriesEdgeVisibilityConstraints):
@@ -148,8 +148,10 @@ class TimeseriesEdgeVisibilityConstraintsNatural(TimeseriesEdgeVisibilityConstra
            https://doi.org/10.7498/APS.61.030506
     """
     limit = 0
+
     def __init__(self, limit=0):
         self.limit = limit
+
     def is_obstructed(self, timeseries, x1, x2, y1, y2):
         # check if any value between obstructs line of sight
         slope = (y2 - y1) / (x2 - x1)
@@ -159,6 +161,7 @@ class TimeseriesEdgeVisibilityConstraintsNatural(TimeseriesEdgeVisibilityConstra
             y >= slope * x + offset
             for x, y in enumerate(timeseries[x1 + self.limit + 1: x2], start=x1 + self.limit + 1)
         )
+
 
 class TimeseriesEdgeVisibilityConstraintsHorizontal(TimeseriesEdgeVisibilityConstraints):
     """
@@ -199,14 +202,17 @@ class TimeseriesEdgeVisibilityConstraintsHorizontal(TimeseriesEdgeVisibilityCons
            https://doi.org/10.1038/s41598-018-23388-1
     """
     limit = 0
+
     def __init__(self, limit=0):
         self.limit = limit
+
     def is_obstructed(self, timeseries, x1, x2, y1, y2):
         # check if any value between obstructs line of sight
         return any(
             y >= max(y1, y2)
             for x, y in enumerate(timeseries[x1 + self.limit + 1: x2], start=x1 + self.limit + 1)
         )
+
 
 class TimeseriesEdgeVisibilityConstraintsVisibilityAngle(TimeseriesEdgeVisibilityConstraints):
     """
@@ -244,26 +250,28 @@ class TimeseriesEdgeVisibilityConstraintsVisibilityAngle(TimeseriesEdgeVisibilit
     """
     visibility_angle = 0
     consider_visibility_angle_absolute_value = True
+
     def __init__(self, visibility_angle=0, consider_visibility_angle_absolute_value=True):
         self.visibility_angle = visibility_angle
         self.consider_visibility_angle_absolute_value = consider_visibility_angle_absolute_value
+
     def is_obstructed(self, timeseries, x1, x2, y1, y2):
         slope = (y2 - y1) / (x2 - x1)
 
         angle = math.atan(slope)
         visibility_angle = self.visibility_angle
-        if(self.consider_visibility_angle_absolute_value):
+        if (self.consider_visibility_angle_absolute_value):
             angle = abs(angle)
             visibility_angle = abs(self.visibility_angle)
 
-        return angle<visibility_angle
+        return angle < visibility_angle
+
 
 class EdgeAdditionStrategyUnweighted(EdgeAdditionStrategy):
     def add_edge(self, G, x1, x2, weight=None):
         G.add_edge(x1, x2)
+
+
 class EdgeAdditionStrategyWeighted(EdgeAdditionStrategy):
     def add_edge(self, G, x1, x2, weight=None):
         G.add_edge(x1, x2, weight=weight)
-
-
-
