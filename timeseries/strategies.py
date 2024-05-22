@@ -78,11 +78,13 @@ class TimeseriesToGraphStrategy:
         G = nx.path_graph(len(timeseries), create_using=self.initialize_graph(self.graph_type))
         nx.set_node_attributes(G, dict(enumerate(timeseries)), "value")
 
-        is_visible = True
         # Check all combinations of nodes n series
         for (x1, y1), (x2, y2) in itertools.combinations(enumerate(timeseries), 2):
+            is_visible = True
             for visibility_constraint in self.visibility_constraints:
-                is_visible = is_visible and visibility_constraint.is_obstructed(timeseries, x1, x2, y1, y2)
+                is_obstructed = visibility_constraint.is_obstructed(timeseries, x1, x2, y1, y2)
+                is_visible = is_visible and not is_obstructed
+
                 if not is_visible:
                     break
             if is_visible:
