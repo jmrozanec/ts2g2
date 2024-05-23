@@ -81,6 +81,7 @@ class TimeseriesToGraphStrategy:
         is_visible = True
         # Check all combinations of nodes n series
         for (x1, y1), (x2, y2) in itertools.combinations(enumerate(timeseries), 2):
+
             for visibility_constraint in self.visibility_constraints:
                 is_visible = is_visible and visibility_constraint.is_obstructed(timeseries, x1, x2, y1, y2)
                 if not is_visible:
