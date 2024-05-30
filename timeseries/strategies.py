@@ -160,7 +160,7 @@ class TimeseriesEdgeVisibilityConstraintsNatural(TimeseriesEdgeVisibilityConstra
         offset = y2 - slope * x2
 
         return any(
-            y > slope * x + offset
+            y >= slope * x + offset
             for x, y in enumerate(timeseries[x1 + self.limit + 1: x2], start=x1 + self.limit + 1)
         )
 
