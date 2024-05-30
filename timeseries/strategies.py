@@ -160,7 +160,7 @@ class TimeseriesEdgeVisibilityConstraintsNatural(TimeseriesEdgeVisibilityConstra
         offset = y2 - slope * x2
 
         return any(
-            y >= slope * x + offset
+            y > slope * x + offset
             for x, y in enumerate(timeseries[x1 + self.limit + 1: x2], start=x1 + self.limit + 1)
         )
 
@@ -211,7 +211,7 @@ class TimeseriesEdgeVisibilityConstraintsHorizontal(TimeseriesEdgeVisibilityCons
     def is_obstructed(self, timeseries, x1, x2, y1, y2):
         # check if any value between obstructs line of sight
         return any(
-            y >= max(y1, y2)
+            y > max(y1, y2)
             for x, y in enumerate(timeseries[x1 + self.limit + 1: x2], start=x1 + self.limit + 1)
         )
 
