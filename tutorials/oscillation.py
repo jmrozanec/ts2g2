@@ -31,8 +31,9 @@ amazon_data = pd.read_csv(os.path.join(os.getcwd(), "amazon", "AMZN.csv"))
 amazon_data["Date"] = pd.to_datetime(amazon_data["Date"])
 amazon_data.set_index("Date", inplace=True)
 
-segment_apple = apple_data[60:120]
+segment_apple = apple_data[60:600]
 segment_amazon = amazon_data[5629:5689]
+segment_1 = apple_data[60:1200]
 
 
 #drawing time series
@@ -44,7 +45,7 @@ def plot_timeseries(sequence, title, x_legend, y_legend, color):
     plt.xlabel(x_legend)
     plt.ylabel(y_legend)
     plt.grid(True)
-    plt.show()
+    #plt.show()
 
 
 def plot_timeseries_sequence(df_column, title, x_legend, y_legend, color):
@@ -84,49 +85,6 @@ def plot_two_timeseries_sequence(df_column1, df_column2, title, x_legend, y_lege
 #conversion from time series to graph
 
 
-#this function connects the nodes that are peaks in their respective oscillations. 
-#difference in value between peaks must be less than osc_all_dif for them to be considered to be in same oscillation
-#same applies for troughs
-def sequence_to_graph_with_small_oscillation(column, color, osc_all_dif):
-    strategy = TimeseriesToGraphStrategy(
-        visibility_constraints=[TimeseriesEdgeVisibilityConstraintsNatural()],
-        graph_type="undirected",
-        edge_weighting_strategy=EdgeWeightingStrategyNull(),
-    )
-
-    peaks, peak_dict = find_peaks(column)
-    troughs, trough_dict = find_peaks(-column)
-
-    g = strategy.to_graph(model.TimeseriesArrayStream(column))
-
-    for node in peaks:
-        for node2 in peaks:
-            if node2 <= node:
-                continue
-            value = g.graph.nodes[node]['value']
-            value2 = g.graph.nodes[node2]['value']
-            dif = abs(value - value2)
-
-            if dif > osc_all_dif:
-                break
-            g.graph.add_edge(node, node2)
-    
-    for node in troughs:
-        for node2 in troughs:
-            if node2 <= node:
-                continue
-            value = g.graph.nodes[node]['value']
-            value2 = g.graph.nodes[node2]['value']
-            dif = abs(value - value2)
-            if dif > osc_all_dif:
-                break
-            g.graph.add_edge(node, node2)
-    
-    pos=nx.spring_layout(g.graph, seed=1)
-    nx.draw(g.graph, pos, node_size=40, node_color=color)
-    plt.show()
-    
-
 def sequence_to_graph(column, color):
     strategy = TimeseriesToGraphStrategy(
         visibility_constraints=[TimeseriesEdgeVisibilityConstraintsNatural()],
@@ -135,93 +93,80 @@ def sequence_to_graph(column, color):
     )
 
     g = strategy.to_graph(model.TimeseriesArrayStream(column))
-    
+
+
     pos=nx.spring_layout(g.graph, seed=1)
     nx.draw(g.graph, pos, node_size=40, node_color=color)
-    plt.show()
-    
+
+#this function is used for connecting similar nodes based on oscillation and seasonality
+def code_oscillation(graph, nodes, period):
+    for node in nodes:
+        graph.add_edge(node, node + period)
 
 
+#creating graph using smaller graphs gained with sliding window
 
-#this function connects first peaks in each oscillation provided that their value is at least min_dif and at most max_dif apart.
-#consecutive peaks are considered to be in same oscillation if their values are at most min_dif apart.
-#same applies for troughs
-def sequence_to_graph_with_big_oscillation(column, color, min_dif, max_dif):
+#This function creates smaller graphs that are used as nodes for bigger graph
+def return_graph(segment):
     strategy = TimeseriesToGraphStrategy(
         visibility_constraints=[TimeseriesEdgeVisibilityConstraintsNatural()],
         graph_type="undirected",
         edge_weighting_strategy=EdgeWeightingStrategyNull(),
     )
 
-    peaks, peak_dict = find_peaks(column)
-    troughs, trough_dict = find_peaks(-column)
+    g = strategy.to_graph(model.TimeseriesArrayStream(segment))
+    return g.graph
 
-    g = strategy.to_graph(model.TimeseriesArrayStream(column))
-
-    last_node = peaks[0]
-    node_bank = peaks[0]
-    for node in peaks:
-        if node < last_node:
-            continue
-
-        for node2 in peaks:
-            if node2 < node:
-                continue
-            
-            value = g.graph.nodes[node]['value']
-            value2 = g.graph.nodes[node2]['value']
-            dif1 = abs(value - value2)
-            value_bank = g.graph.nodes[node_bank]['value']
-            dif2 = abs(value2 - value_bank)
-
-            if dif1 < min_dif or dif1 > max_dif:
-                continue
-            if dif2 < min_dif:
-                continue
-
-            g.graph.add_edge(node, node2)
-
-            node_bank = node2
-
-            if node == last_node:
-                last_node = node2
+#This function combines two nodes in a graph.
+def combine_nodes(graph, node_1, node_2):
     
-    last_node = troughs[0]
-    node_bank = troughs[0]
-    for node in troughs:
-        if node < last_node:
-            continue
+    for neighbor in list(graph.neighbors(node_2)):
+        graph.add_edge(node_1, neighbor)
 
-        for node2 in troughs:
-            if node2 < node:
-                continue
+    graph.remove_node(node_2)
+    return graph
+
+
+
+#This function when called creates a graph which nodes are smaller graphs gained from segments of original data 
+#using sliding window. It's nodes (smaller graphs) that are identical are combined into one node.
+def sliding_win_graph(data, color, sliding_win_len, column_name):
+    
+    g = nx.Graph()
+    node_prev = None
+
+    for i in range(len(data) - sliding_win_len):
+        segment = data[i:i + sliding_win_len][column_name]
+        h = return_graph(segment)
+        g.add_node(h)
+        if(node_prev != None):
+            g.add_edge(node_prev, h)
+        node_prev = h
+    
+    combined = []
+
+    for i, node_1 in enumerate(list(g.nodes)):
+        for node_2 in list(g.nodes)[i:]:
             
-            value = g.graph.nodes[node]['value']
-            value2 = g.graph.nodes[node2]['value']
-            dif1 = abs(value - value2)
-            value_bank = g.graph.nodes[node_bank]['value']
-            dif2 = abs(value2 - value_bank)
+            if(set(list(node_1.edges)) == set(list(node_2.edges))):
+                g = combine_nodes(g, node_1, node_2)
+                combined.append(node_1)
+                
+    colors = []
 
-            if dif1 < min_dif or dif1 > max_dif:
-                continue
-            if dif2 < min_dif:
-                continue
+    #If you want to have nodes that were combined be colored differently, just change one of the colors below.
+    for node in list(g.nodes):
+        if(node in combined):
+            colors.append(color)
+        else:
+            colors.append(color)
 
-            g.graph.add_edge(node, node2)
-
-            node_bank = node2
-
-            if node == last_node:
-                last_node = node2
-
-    pos=nx.spring_layout(g.graph, seed=1)
-    nx.draw(g.graph, pos, node_size=40, node_color=color)
+    pos=nx.spring_layout(g, seed=1)
+    nx.draw(g, pos, node_size=40, node_color=colors)
     plt.show()
 
-
-
-
-plot_timeseries_sequence(segment_amazon["Close"], "segment", "Date", "Value", "orange")
-sequence_to_graph(segment_amazon["Close"], "red")
-sequence_to_graph_with_small_oscillation(segment_amazon["Close"], "blue", 20)
-sequence_to_graph_with_big_oscillation(segment_amazon["Close"], "pink", 16, 500)
+    
+sliding_win_graph(segment_apple, "red", 10, "Close")
+sliding_win_graph(segment_1, "green", 10, "Close")
+sliding_win_graph(segment_amazon, "pink", 5, "Close")
+plt.show()
