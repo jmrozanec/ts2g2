@@ -94,6 +94,38 @@ def code_oscillation(graph, nodes, period):
     for node in nodes:
         graph.add_edge(node, node + period)
 
+#this function parses the informations from xml file and generates time series from them
+def time_series_from_xml_file(file_path):
+
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+
+    financial_statements = root.find('FinancialStatements')
+    COAMap = financial_statements.find('COAMap')
+    interim_periods = financial_statements.find('InterimPeriods')
+    annual_periods = financial_statements.find("AnnualPeriods")
+    
+    i = 0
+    for item in COAMap:
+        name = item.get('coaItem')
+
+        elements = annual_periods.findall(f".//lineItem[@coaCode = '{name}']")
+        elements2 = interim_periods.findall(f".//lineItem[@coaCode = '{name}']")
+        column = []
+        column2 = []
+
+        for element in elements:
+            column.append(float(element.text))
+        
+        for element in elements2:
+            column2.append(float(element.text))
+
+        title = item.text + " annual"
+        title2 = item.text + " interim"
+        if i%20 == 0:
+            plot_timeseries_sequence(column, title, 'Date', 'Value', "black")
+            plot_timeseries_sequence(column2, title2, 'Date', 'Value', "black")
+        i += 1
 
 #creating graph using smaller graphs gained with sliding window
 
@@ -129,7 +161,7 @@ def combine_nodes(graph, node_1, node_2):
 
 #This function when called creates a graph which nodes are smaller graphs gained from segments of original data 
 #using sliding window. It's nodes (smaller graphs) that are identical are combined into one node.
-def sliding_win_graph(data, color, sliding_win_len, column_name):
+def to_slidingWindowGraph(data, color, sliding_win_len, column_name):
     
     g = nx.MultiGraph()
     node_prev = None
@@ -174,40 +206,6 @@ def sliding_win_graph(data, color, sliding_win_len, column_name):
     pos=nx.spring_layout(g, seed=1)
     nx.draw(g, pos, node_size=40, node_color=colors)
     plt.show()
-
-
-#this function parses the informations from xml file and generates time series from them
-def time_series_from_xml_file(file_path):
-
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-
-    financial_statements = root.find('FinancialStatements')
-    COAMap = financial_statements.find('COAMap')
-    interim_periods = financial_statements.find('InterimPeriods')
-    annual_periods = financial_statements.find("AnnualPeriods")
-    
-    i = 0
-    for item in COAMap:
-        name = item.get('coaItem')
-
-        elements = annual_periods.findall(f".//lineItem[@coaCode = '{name}']")
-        elements2 = interim_periods.findall(f".//lineItem[@coaCode = '{name}']")
-        column = []
-        column2 = []
-
-        for element in elements:
-            column.append(float(element.text))
-        
-        for element in elements2:
-            column2.append(float(element.text))
-
-        title = item.text + " annual"
-        title2 = item.text + " interim"
-        if i%20 == 0:
-            plot_timeseries_sequence(column, title, 'Date', 'Value', "black")
-            plot_timeseries_sequence(column2, title2, 'Date', 'Value', "black")
-        i += 1
 
 #These are smaller functions to support ones below:
 
@@ -263,7 +261,10 @@ def append_random(sequence, graph):
 
 #This function draws a graph made with sliding window mechanism by iterating through the first graph, 
 #always choosing lowest available index of a node and value. It simultaniously deletes paths it has already crossed.
-def toTimeSequence_lowestIndex(graph, nodes_1, nodes_2, color_1, color_2, time_series_len = 100):
+def toTimeSequence_lowestIndex(data_1, data_2, sliding_win_len, column_name, color_1 = "red", color_2 = "blue", time_series_len = 100):
+    
+    graph, nodes_1, nodes_2 = middle_man(data_1, data_2, sliding_win_len, column_name)
+    
     sequence_1 = []
     sequence_2 =[]
 
@@ -333,7 +334,10 @@ def toTimeSequence_lowestIndex(graph, nodes_1, nodes_2, color_1, color_2, time_s
 
 #This function draws a graph made with sliding window mechanism by randomly choosing next node and value always from the same graph, 
 # and for the other it chooses a random neighbor of the current node from the first graph
-def toTimeSequence_lowestIndex_random(graph, nodes_1, nodes_2, color_1, color_2, time_series_len = 100):
+def toTimeSequence_lowestIndex_random(data_1, data_2, sliding_win_len, column_name, color_1 = "red", color_2 = "blue", time_series_len = 100):
+    
+    graph, nodes_1, nodes_2 = middle_man(data_1, data_2, sliding_win_len, column_name)
+    
     sequence_1 = []
     sequence_2 =[]
 
@@ -358,7 +362,10 @@ def toTimeSequence_lowestIndex_random(graph, nodes_1, nodes_2, color_1, color_2,
     plot_timeseries(sequence_2, "graph 2", "Date", "Value", color_2)
 
 #This function draws a graph made with sliding window mechanism by randomly choosing next node and value once from fist graph and once from the other
-def toTimeSequence_random(graph, nodes_1, nodes_2, color_1, color_2, time_series_len = 100):
+def toTimeSequence_random(data_1, data_2, sliding_win_len, column_name, color_1 = "red", color_2 = "blue", time_series_len = 100):
+    
+    graph, nodes_1, nodes_2 = middle_man(data_1, data_2, sliding_win_len, column_name)
+
     sequence_1 = []
     sequence_2 =[]
 
@@ -389,38 +396,10 @@ def toTimeSequence_random(graph, nodes_1, nodes_2, color_1, color_2, time_series
 #This functions binds two graphs made by the method of sliding window based on time co-ocurrance 
 #and then combines identical nodes(smaller graphs).
 #At the end you can add a call to the function to draw these graphs either randomly or iterating through one
-def connected_sliding_win_graphs(data_1, data_2, sliding_win_len, column_name):
-
-    g = nx.MultiGraph()
-
-    node_prev = None
-
-    nodes_1 = []
-    nodes_2 = []
-
-    for i in range(len(data_1) - sliding_win_len):
-        segment = data_1[i:i + sliding_win_len][column_name]
-        h = return_graph(segment)
-        g.add_node(h)
-        if(node_prev != None):
-            g.add_edge(node_prev, h)
-        node_prev = h
-        nodes_1.append(h)
-
-    for i in range(len(data_2) - sliding_win_len):
-        segment = data_2[i:i + sliding_win_len][column_name]
-        h = return_graph(segment)
-        g.add_node(h)
-        if(node_prev != None):
-            g.add_edge(node_prev, h)
-        node_prev = h
-        nodes_2.append(h)
+def connect_sliding_win_graphs(data_1, data_2, sliding_win_len, column_name, color_1 = "red", color_2 = "blue", color_3 = "green", color_4 = "orange"):
     
-    
-    for i in range(0, len(nodes_1)):
-        g.add_edge(nodes_1[i], nodes_2[i])
-    
-    
+    g, nodes_1, nodes_2 = middle_man(data_1, data_2, sliding_win_len, column_name)
+
     combined_1 = []
     combined_2 = []
 
@@ -464,25 +443,58 @@ def connected_sliding_win_graphs(data_1, data_2, sliding_win_len, column_name):
     #If you want to have nodes that were combined be colored differently, just change one of the colors below.
     for node in list(g.nodes):
         if(node in combined_1):
-            colors.append("blue")
+            colors.append(color_1)
         elif(node in combined_2):
-            colors.append("red")
+            colors.append(color_2)
         elif node in nodes_1 :
-            colors.append("green")
+            colors.append(color_3)
         else:
-            colors.append("violet")
+            colors.append(color_4)
     
 
     pos=nx.spring_layout(g, seed=1)
     nx.draw(g, pos, node_size=40, node_color=colors)
     plt.show()
-
-    #here you can choose how you want them to be drawn and how long do you want the sequence to be
     
-    #graphToTime_sequence_one_least(g, nodes_1, nodes_2, "red", "blue", time_series_len=200)
-    #graphToTime_sequence_one_random(g, nodes_1, nodes_2, "green", "black", time_series_len=200)
-    #graphToTime_sequence_random(g, nodes_1, nodes_2, "grey", "purple", time_series_len=200)
+    #toTimeSequence_lowestIndex(g, nodes_1, nodes_2, "red", "blue", time_series_len=200)
+    #toTimeSequence_lowestIndex_random(g, nodes_1, nodes_2, "green", "black", time_series_len=200)
+    #toTimeSequence_random(g, nodes_1, nodes_2, "grey", "purple", time_series_len=200)
 
-connected_sliding_win_graphs(segment_amazon, segment_apple, 5, "Close")
+def middle_man(data_1, data_2, sliding_win_len, column_name):
+    g = nx.MultiGraph()
+
+    node_prev = None
+
+    nodes_1 = []
+    nodes_2 = []
+
+    for i in range(len(data_1) - sliding_win_len):
+        segment = data_1[i:i + sliding_win_len][column_name]
+        h = return_graph(segment)
+        g.add_node(h)
+        if(node_prev != None):
+            g.add_edge(node_prev, h)
+        node_prev = h
+        nodes_1.append(h)
+
+    for i in range(len(data_2) - sliding_win_len):
+        segment = data_2[i:i + sliding_win_len][column_name]
+        h = return_graph(segment)
+        g.add_node(h)
+        if(node_prev != None):
+            g.add_edge(node_prev, h)
+        node_prev = h
+        nodes_2.append(h)
+    
+    
+    for i in range(0, len(nodes_1)):
+        g.add_edge(nodes_1[i], nodes_2[i])
+    
+    return g, nodes_1, nodes_2
+
+#connect_sliding_win_graphs(segment_amazon, segment_apple, 5, "Close")
+#toTimeSequence_lowestIndex(segment_amazon, segment_apple, 5, "Close", "red", "blue", time_series_len=200)
+#toTimeSequence_lowestIndex_random(segment_amazon, segment_apple, 5, "Close")
+#toTimeSequence_random(segment_amazon, segment_apple, 5, "Close", "grey", "purple", time_series_len=200)
 
 plt.show()
