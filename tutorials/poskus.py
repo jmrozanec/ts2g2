@@ -46,7 +46,11 @@ def plot_timeseries_sequence(df_column, title, x_legend, y_legend, color):
 
 segment_apple = apple_data[60:120]
 segment_amazon = amazon_data[5629:5689]
+segment_1 = amazon_data[4500:5200]
 
+#plot_timeseries_sequence(amazon_data["Close"], "Amazon", "Year", "Value", "black")
+#plot_timeseries_sequence(apple_data["Close"], "Apple", "Year", "Value", "grey")
+plot_timeseries_sequence(segment_1["Close"], "Apple", "Year", "Value", "silver")
 
 def group_graph(column1, color1, column2, color2):
     strategy = TimeseriesToGraphStrategy(
@@ -83,13 +87,45 @@ def group_graph(column1, color1, column2, color2):
 
         h.add_edge(f"g{gn}", f"f{fn}", weight = dif)
 
-    
     pos = nx.spring_layout(h, seed=1)
     nx.draw(h, pos, node_size = 40, node_color=color_map)
+    
+    plt.show()
     #print(list(h.edges))
 
 
-group_graph(segment_apple["Close"], "blue", segment_amazon["Close"], "red")
+#group_graph(segment_apple["Close"], "blue", segment_amazon["Close"], "red")
 
-plot_timeseries_sequence(segment_apple["Close"], "Segment 1", "Year", "Value", "grey")
-plot_timeseries_sequence(segment_amazon["Close"], "Segment 1", "Year", "Value", "orange")
+
+#plot_timeseries_sequence(segment_apple["Close"], "Segment 1", "Year", "Value", "grey")
+#plot_timeseries_sequence(segment_amazon["Close"], "Segment 1", "Year", "Value", "orange")
+
+def plot_two_timeseries(sequence1, sequence2, title, x_legend, y_legend, color1, color2):
+
+    plot_apple = plt.subplot2grid((2,2), (0,0))
+    plot_amazon = plt.subplot2grid((2,2), (0,1))
+    plot_both = plt.subplot2grid((2,2), (1,0), colspan=2)
+
+
+    plt.figure(figsize=(10, 6))
+    plot_apple.plot(sequence1, label = 'Apple', linestyle='-', color=color1)
+    plot_amazon.plot(sequence2, label = 'Amazon', linestyle='-', color=color2)
+    plot_both.plot(sequence1, label = 'Apple', linestyle='-', color=color1)
+    plot_both.plot(sequence2, label = 'Amazon', linestyle='-', color=color2)
+    
+    plt.title(title)
+    plt.xlabel(x_legend)
+    plt.ylabel(y_legend)
+    plt.grid(True)
+    plot_both.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_two_timeseries_sequence(df_column1, df_column2, title, x_legend, y_legend, color1, color2):
+    sequence1 = model.Timeseries(model.TimeseriesArrayStream(df_column1)).to_sequence()
+    sequence2 = model.Timeseries(model.TimeseriesArrayStream(df_column2)).to_sequence()
+    plot_two_timeseries(sequence1, sequence2, title, x_legend, y_legend, color1, color2)
+
+#plot_two_timeseries_sequence(segment_apple["Close"], segment_amazon["Close"], "Segment 1", "Year", "Value", "grey", "orange")
+#plot_two_timeseries_sequence(apple_data["Close"], amazon_data["Close"], "Segment 1", "Year", "Value", "black", "green")

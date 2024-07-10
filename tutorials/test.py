@@ -119,6 +119,3 @@ generate_sequence(segment_2, 'Close', 'green')
 generate_sequence(segment_3, 'Close', 'blue')
 
 
-
-
-
