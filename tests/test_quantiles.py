@@ -8,7 +8,8 @@ class TestTimeseriesToQuantileGraph(unittest.TestCase):
 
     def setUp(self):
         self.Q = 4  # Number of quantiles
-        self.ts_to_qg = TimeseriesToQuantileGraph(self.Q)
+        self.phi = 1
+        self.ts_to_qg = TimeseriesToQuantileGraph(self.Q, self.phi)
 
     def test_discretize_to_quantiles(self):
         time_series = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -69,7 +70,7 @@ class TestTimeseriesToQuantileGraph(unittest.TestCase):
         np.testing.assert_almost_equal(quantile_bins, expected_quantile_bins, decimal=8)
         np.testing.assert_array_equal(quantile_indices, expected_quantile_indices)
 
-        G = self.ts_to_qg.to_graph(time_series)
+        G = self.ts_to_qg.to_graph(time_series, phi = 1 )
 
         self.assertEqual(len(G.nodes), self.Q)
         self.assertEqual(len(G.edges), 1)
@@ -92,6 +93,27 @@ class TestTimeseriesToQuantileGraph(unittest.TestCase):
         for (u, v, d) in G.edges(data=True):
             self.assertAlmostEqual(d['weight'], expected_edges[(u, v)], places=8)
 
+    def test_to_graph_phi_3(self):
+        time_series = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.ts_to_qg.phi = 3
+        G = self.ts_to_qg.to_graph(time_series, phi=3)
+
+        self.assertEqual(len(G.nodes), self.Q)
+
+        expected_edges = {
+            (0, 1): 2/3,
+            (0, 2): 1/3,
+            (1, 2): 1/2,
+            (1, 3): 1/2,
+            (2, 3): 1
+        }
+
+        # Check edges in the graph
+        for (u, v, d) in G.edges(data=True):
+            self.assertAlmostEqual(d['weight'], expected_edges[(u, v)], places=8)
+
+        # Ensure the correct number of edges
+        self.assertEqual(len(G.edges), len(expected_edges))
 
 if __name__ == '__main__':
     unittest.main()

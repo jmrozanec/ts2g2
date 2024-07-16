@@ -2,9 +2,11 @@ import numpy as np
 import networkx as nx
 
 class TimeseriesToOrdinalPatternGraph:
-    def __init__(self, w, tau):
+    def __init__(self, w, tau, use_quantiles=False, Q=4):
         self.w = w
         self.tau = tau
+        self.use_quantiles = use_quantiles
+        self.Q = Q
 
     def embeddings(self, time_series):
         n = len(time_series)
@@ -12,14 +14,24 @@ class TimeseriesToOrdinalPatternGraph:
         return np.array(embedded_series)
 
     def ordinal_pattern(self, vector):
-        indexed_vector = [(value, index) for index, value in enumerate(vector)]
-        sorted_indexed_vector = sorted(indexed_vector, key=lambda x: x[0])
-        ranks = [0] * len(vector)
-        for rank, (value, index) in enumerate(sorted_indexed_vector):
-            ranks[index] = rank
+        if self.use_quantiles:
+            quantiles = np.linspace(0, 1, self.Q + 1)[1:-1]  # Compute quantile thresholds based on Q
+            thresholds = np.quantile(vector, quantiles)  # Get the quantile values
+            ranks = np.zeros(len(vector), dtype=int)
+
+            for i, value in enumerate(vector):
+                ranks[i] = np.sum(value > thresholds)  # Rank based on quantiles
+
+        else:
+            indexed_vector = [(value, index) for index, value in enumerate(vector)]
+            sorted_indexed_vector = sorted(indexed_vector, key=lambda x: x[0])
+            ranks = [0] * len(vector)
+            for rank, (value, index) in enumerate(sorted_indexed_vector):
+                ranks[index] = rank
+
         return tuple(ranks)
 
-    def to_graph(self, time_series, w, tau):
+    def to_graph(self, time_series):
         embedded_series = self.embeddings(time_series)
         ordinal_patterns = [self.ordinal_pattern(vec) for vec in embedded_series]
 
@@ -42,4 +54,3 @@ class TimeseriesToOrdinalPatternGraph:
             G.add_edge(start, end, weight=weight / len(ordinal_patterns))
 
         return G
-
