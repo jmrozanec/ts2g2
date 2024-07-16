@@ -235,6 +235,11 @@ def is_equal(graph_1, graph_2):
 #appends values of a node(smaller graphs) by choosing the lowest index available
 def append_one(sequence, graph, dict, i):
 
+    dict = {}
+
+    for i in range(len(list(graph.nodes))):
+        dict[i] = 0
+
     if int(dict[i]/2) >= len(list(graph.nodes(data=True)[0]['value'])):
         dict[i] = 0
     
@@ -248,15 +253,337 @@ def append_one(sequence, graph, dict, i):
     return sequence
 
 #appends values of a node(smaller graphs) randomly
-def append_random(sequence, graph):
 
-    nodes = list(graph.nodes(data = True))
-    random.shuffle(nodes)
+class choose_strategy_2():
+    def __init__(self, walk, walkthrough, value, dict, graph, nodes_1, nodes_2):
+        self.walkthrough = walkthrough
+        self.walk = walk
+        self.value = value
+        self.dict = dict
+        self.graph = graph
+        self.nodes_1 = nodes_1
+        self.nodes_2 = nodes_2
 
-    for node in nodes:
-        index = random.randint(0, len(node[1]['value']) - 1)
-        sequence.append(node[1]['value'][index])
-    return sequence
+    def append_random(self, sequence, graph):
+
+        nodes = list(graph.nodes(data = True))
+        random.shuffle(nodes)
+
+        for node in nodes:
+            index = random.randint(0, len(node[1]['value']) - 1)
+            sequence.append(node[1]['value'][index])
+        return sequence
+    
+    def append_lowInd(self, sequence, graph, i):
+        if int(self.dict[i]/2) >= len(list(graph.nodes(data=True)[0]['value'])):
+            self.dict[i] = 0
+    
+        index = int(self.dict[i]/2)
+
+        for node in graph.nodes(data=True):
+            sequence.append(node[1]['value'][index])
+    
+        self.dict[i] += 1
+        i += 1
+        return sequence
+    
+    def append(self, sequence, graph, i):
+        if(self.value) == "random":
+            return self.append_random(sequence, graph)
+        elif self.value == "sequential" :
+            return self.append_lowInd(sequence, graph, i)
+        else:
+            print("you chose non-existent method of value selection")
+            print("please choose between: random, sequential")
+            return None
+
+    def next_node_one_random(self, graph_index, node):
+        neighbors = set(self.graph.neighbors(node))
+        if graph_index == 1:
+            neighbors_1 = list(set(self.nodes_1) & neighbors)
+            return random.choice(neighbors_1)
+        else:
+            neighbors_2 = list(set(self.nodes_2) & neighbors)
+            return random.choice(neighbors_2)
+    
+    def next_node_both_random(self, i, graph_index, node_1, node_2, switch):
+        neighbors = []
+        if (i/switch)%2 == 0:
+            neighbors = set(self.graph.neighbors(node_1))
+        else:
+            neighbors = set(self.graph.neighbors(node_2))
+        
+        if graph_index == 1:
+            neighbors_1 = list(set(self.nodes_1) & neighbors)
+            return random.choice(neighbors_1)
+        else:
+            neighbors_2 = list(set(self.nodes_2) & neighbors)
+            return random.choice(neighbors_2)
+
+    def next_node_one_weighted(self, graph_index, node):
+        neighbors = set(self.graph.neighbors(node))
+        if graph_index == 1:
+            neighbors = list(set(self.nodes_1) & neighbors)
+        else:
+            neighbors = list(set(self.nodes_2) & neighbors)
+        
+        weights = []
+        total = 0
+        for neighbor in neighbors:
+            num = self.graph.number_of_edges(node, neighbor)
+            weights.append(num)
+            total += num
+        for element in weights:
+            element /= total
+        
+        return random.choices(neighbors, weights=weights, k=1)[0]
+    
+    def next_node_both_weighted(self, i, graph_index, node_1, node_2, switch):
+        neighbors = []
+        if (i/switch)%2 == 0:
+            neighbors = set(self.graph.neighbors(node_1))
+        else:
+            neighbors = set(self.graph.neighbors(node_2))
+        
+        if graph_index == 1:
+            neighbors = list(set(self.nodes_1) & neighbors)
+        else:
+            neighbors = list(set(self.nodes_2) & neighbors)
+        
+        weights = []
+        total = 0
+        for neighbor in neighbors:
+            num = 0
+            if (i/switch)%2 == 0:
+                num = self.graph.number_of_edges(node_1, neighbor)
+            else:
+                num = self.graph.number_of_edges(node_2, neighbor)
+            weights.append(num)
+            total += num
+        for element in weights:
+            element /= total
+        
+        return random.choices(neighbors, weights=weights, k=1)[0]
+    
+    def next_node_one(self, graph_index, node):
+        if self.walkthrough == "random":
+            return self.next_node_one_random(graph_index, node)
+        elif  self.walkthrough == "weighted":
+            return self.next_node_one_weighted(graph_index, node)
+        else:
+            print("you chose non-existent walkthrough.")
+            print("please choose between: random, weighted")
+            return None
+    
+    def next_node_both(self, i, graph_index, node_1, node_2, switch):
+        if self.walkthrough == "random":
+            return self.next_node_both_random(i, graph_index, node_1, node_2, switch)
+        elif  self.walkthrough == "weighted":
+            return self.next_node_both_weighted(i, graph_index, node_1, node_2, switch)
+        else:
+            print("you chose non-existent walkthrough.")
+            print("please choose between: random, weighted")
+            return None
+
+    def next_node(self, i, graph_index, node_1, node_2, switch):
+        if self.walk == "one":
+            return self.next_node_one(graph_index, node_1)
+        elif self.walk == "both":
+            return self.next_node_both(i, graph_index, node_1, node_2, switch)
+        else:
+            print("you chose non-existent walk")
+            print("please choose between: one, both")
+            return None        
+    
+class choose_strategy():
+    def __init__(self, walkthrough, value, dict, graph, nodes):
+        self.walkthrough = walkthrough
+        self.value = value
+        self.dict = dict
+        self.graph = graph
+        self.nodes = nodes
+    
+    def append_random(self, sequence, graph):
+
+        nodes = list(graph.nodes(data = True))
+        random.shuffle(nodes)
+
+        for node in nodes:
+            index = random.randint(0, len(node[1]['value']) - 1)
+            sequence.append(node[1]['value'][index])
+        return sequence
+
+    def append_lowInd(self, sequence, graph, i):
+        if int(self.dict[i]/2) >= len(list(graph.nodes(data=True)[0]['value'])):
+            self.dict[i] = 0
+    
+        index = int(self.dict[i]/2)
+
+        for node in graph.nodes(data=True):
+            sequence.append(node[1]['value'][index])
+    
+        self.dict[i] += 1
+        i += 1
+        return sequence
+
+    def append(self, sequence, graph, i):
+        if(self.value) == "random":
+            return self.append_random(sequence, graph)
+        elif self.value == "sequential" :
+            return self.append_lowInd(sequence, graph, i)
+        else:
+            print("you chose non-existent method of value selection")
+            print("please choose between: random, sequential")
+            return None
+
+    def next_node_weighted(self, node):
+        neighbors = set(self.graph.neighbors(node))
+        neighbors = list(set(self.nodes) & neighbors)
+        
+        weights = []
+        total = 0
+        for neighbor in neighbors:
+            num = self.graph.number_of_edges(node, neighbor)
+            weights.append(num)
+            total += num
+        for element in weights:
+            element /= total
+        
+        return random.choices(neighbors, weights=weights, k=1)[0]
+
+    def next_node_random(self, node):
+        neighbors = set(self.graph.neighbors(node))
+        neighbors = list(set(self.nodes) & neighbors)
+        return random.choice(neighbors)
+
+    def next_node(self, node):
+        if self.walkthrough == "random":
+            return self.next_node_random(node)
+        elif  self.walkthrough == "weighted":
+            return self.next_node_weighted(node)
+        else:
+            print("you chose non-existent walkthrough.")
+            print("please choose between: random, weighted")
+            return None
+
+class choose_strategy_multiple():
+    def __init__(self, walk, walkthrough, value, graph, nodes, dictionaries):
+        self.walkthrough = walkthrough
+        self.walk = walk
+        self.value = value
+        self.graph = graph
+        self.nodes = nodes
+        self.dictionaries = dictionaries
+    
+    def append_random(self, sequence, graph):
+
+        nodes = list(graph.nodes(data = True))
+        random.shuffle(nodes)
+
+        for node in nodes:
+            index = random.randint(0, len(node[1]['value']) - 1)
+            sequence.append(node[1]['value'][index])
+        return sequence
+
+    def append_lowInd(self, sequence, graph, graph_index, index):
+        
+        if int(self.dictionaries[graph_index][index]/2) >= len(list(graph.nodes(data=True)[0]['value'])):
+            self.dictionaries[graph_index][index] = 0
+    
+        ind = int(self.dictionaries[graph_index][index]/2)
+
+        for node in graph.nodes(data=True):
+            sequence.append(node[1]['value'][ind])
+    
+        self.dictionaries[graph_index][index] += 1
+        return sequence
+
+    def append(self, sequence, graph, graph_index, index):
+        if(self.value) == "random":
+            return self.append_random(sequence, graph)
+        elif self.value == "sequential" :
+           return self.append_lowInd(sequence, graph, graph_index, index)
+        else:
+            print("you chose non-existent method of value selection")
+            print("please choose between: random")
+            return None
+
+    def next_node_one_random(self, graph_index, node):
+        neighbors = set(self.graph.neighbors(node))
+        neighbors = list(set(self.nodes[graph_index]) & neighbors)
+        return random.choice(neighbors)
+
+    def next_node_one_weighted(self, graph_index, node):
+        neighbors = set(self.graph.neighbors(node))
+        neighbors = list(set(self.nodes[graph_index]) & neighbors)
+        
+        weights = []
+        total = 0
+        for neighbor in neighbors:
+            num = self.graph.number_of_edges(node, neighbor)
+            weights.append(num)
+            total += num
+        for element in weights:
+            element /= total
+        
+        return random.choices(neighbors, weights=weights, k=1)[0]
+
+    def next_node_one(self, graph_index, node):
+        if self.walkthrough == "random":
+            return self.next_node_one_random(graph_index, node)
+        elif  self.walkthrough == "weighted":
+            return self.next_node_one_weighted(graph_index, node)
+        else:
+            print("you chose non-existent walkthrough.")
+            print("please choose between: random, weighted")
+            return None
+
+    def next_node_both_random(self, i, graph_index, nodes, switch):
+        index = int((i/switch) % len(nodes))
+        neighbors = set(self.graph.neighbors(nodes[index]))
+        
+        neighbors = list(set(self.nodes[graph_index]) & neighbors)
+        return random.choice(neighbors)
+    
+    def next_node_all_weighted(self, i, graph_index, nodes, switch):
+        
+        index = int((i/switch) % len(nodes))
+        neighbors = set(self.graph.neighbors(nodes[index]))
+        neighbors = list(set(self.nodes[graph_index]) & neighbors)
+        
+        weights = []
+        total = 0
+
+        for neighbor in neighbors:
+            num = self.graph.number_of_edges(nodes[index], neighbor)
+            weights.append(num)
+            total += num
+        
+        for element in weights:
+            element /= total
+        
+        return random.choices(neighbors, weights=weights, k=1)[0]
+    
+    def next_node_all(self, i, graph_index, nodes, switch):
+        if self.walkthrough == "random":
+            return self.next_node_all_random(i, graph_index, nodes, switch)
+        elif  self.walkthrough == "weighted":
+            return self.next_node_all_weighted(i, graph_index, nodes, switch)
+        else:
+            print("you chose non-existent walkthrough.")
+            print("please choose between: random, weighted")
+            return None
+    
+    def next_node(self, i, graph_index, nodes, switch):
+        if self.walk == "one":
+            return self.next_node_one(graph_index, nodes[0])
+        elif self.walk == "all":
+            return self.next_node_all(i, graph_index, nodes, switch)
+        else:
+            print("you chose non-existent walk")
+            print("please choose between: one, all")
+            return None
+
 #--------------------------------------------------
 
 #This function draws a graph made with sliding window mechanism by iterating through the first graph, 
@@ -275,9 +602,6 @@ def toTimeSequence_lowestIndex(data_1, data_2, sliding_win_len, column_name, col
     previous_node_2 = current_node_2
 
     dict = {}
-
-
-
     for i in range(len(list(graph.nodes))):
         dict[i] = 0
     
@@ -363,6 +687,7 @@ def toTimeSequence_lowestIndex_random(data_1, data_2, sliding_win_len, column_na
 
 #This function draws a graph made with sliding window mechanism by randomly choosing next node and value once from fist graph and once from the other
 def toTimeSequence_random(data_1, data_2, sliding_win_len, column_name, color_1 = "red", color_2 = "blue", time_series_len = 100):
+
     
     graph, nodes_1, nodes_2 = middle_man(data_1, data_2, sliding_win_len, column_name)
 
@@ -392,6 +717,135 @@ def toTimeSequence_random(data_1, data_2, sliding_win_len, column_name, color_1 
     
     plot_timeseries(sequence_1, "graph 1", "Date", "Value", color_1)
     plot_timeseries(sequence_2, "graph 2", "Date", "Value", color_2)
+
+#Functions above were integrated into one function belove
+#---------------------------------------------------
+
+def toTimeSequence_2(data_1, data_2, sliding_win_len, column_name, walk = "one", walkthrough = "random", select_value = "random", 
+    color_1 = "red", color_2 = "blue", time_series_len = 100, skip_values = 1, switch_graphs = 1):
+
+    graph, nodes_1, nodes_2 = middle_man_2(data_1, data_2, sliding_win_len, column_name)
+
+    sequence_1 = []
+    sequence_2 =[]
+
+    current_node_1 = nodes_1[0]
+    current_node_2 = nodes_2[0]
+
+    dict = {}
+    for i in range(len(list(graph.nodes))):
+        dict[i] = 0
+    
+    strategy = choose_strategy_2(walk, walkthrough, select_value, dict, graph, nodes_1, nodes_2)
+
+    i = 0
+    while len(sequence_1) < time_series_len:
+
+        index = 0
+        for i in range(len(list(graph.nodes))):
+            if(is_equal(current_node_1, list(graph.nodes)[i])):
+                index = i
+                break
+        
+        sequence_1 = strategy.append(sequence_1, current_node_1, index)
+        sequence_2 = strategy.append(sequence_2, current_node_2, index)
+        if sequence_1[-1] == None or sequence_2[-1] == None:
+            return
+
+        for j in range(skip_values):
+            current_node_1 = strategy.next_node(i, 1, current_node_1, current_node_2, switch_graphs)
+            current_node_2 = strategy.next_node(i, 2, current_node_1, current_node_2, switch_graphs)
+            if(current_node_1 == None or current_node_2 == None):
+                return
+        i += 1
+    
+    plot_timeseries(sequence_1, f"walk = {walk}, walkthrough = {walkthrough}, value = {select_value}", "Date", "Value", color_1)
+    plot_timeseries(sequence_2, f"walk = {walk}, walkthrough = {walkthrough}, value = {select_value}", "Date", "Value", color_2)
+
+def toTimeSequence(data, sliding_win_len, column, color = "black", walkthrough = "random", 
+                                select_value = "random", time_series_len = 100, skip_values = 1):
+    
+    graph = middle_man(data, sliding_win_len, column)
+    sequence = []
+    nodes = list(graph.nodes)
+    current_node = nodes[0]
+
+    dict = {}
+    for i in range(len(list(graph.nodes))):
+        dict[i] = 0
+
+    strategy = choose_strategy(walkthrough, select_value, dict, graph, nodes)
+
+    while len(sequence) < time_series_len:
+
+        index = 0
+        for i in range(len(list(graph.nodes))):
+            if(is_equal(current_node, list(graph.nodes)[i])):
+                index = i
+                break
+        
+        sequence = strategy.append(sequence, current_node, index)
+        if sequence[-1] == None:
+            return
+
+        for j in range(skip_values):
+            current_node = strategy.next_node(current_node)
+            if(current_node == None):
+                return
+
+    plot_timeseries(sequence, f"walkthrough = {walkthrough}, value = {select_value}", "Date", "Value", color)
+
+def toMultipleTimeSequences(data, sliding_win_len, column, colors = None, walk = "one", walkthrough = "random", 
+                            select_value = "random", time_series_len = 100, skip_values = 1, switch_graphs = 1):
+    
+    graph, nodes = middle_man_multiple(data, sliding_win_len, column)
+    sequences = [[] for _ in range(len(data))]
+
+    current_nodes = [None for _ in range(len(data))]
+
+    for i in range(len(data)):
+        current_nodes[i] = nodes[i][0]
+    
+    dictionaries = [{} for _ in range(len(data))]
+    for i in range(len(data)):
+        for j in range(len(list(nodes[i]))):
+            dictionaries[i][j] = 0
+
+    
+    
+    strategy = choose_strategy_multiple(walk, walkthrough, select_value, graph, nodes, dictionaries)
+
+    i = 0
+    while len(sequences[0]) < time_series_len:
+        
+        for j in range(len(sequences)):
+
+            index = 0
+            for i in range(len(list(nodes[j]))):
+                if(is_equal(current_nodes[j], list(graph.nodes)[i])):
+                    index = i
+                    break
+
+            sequences[j] = strategy.append(sequences[j], current_nodes[j], j, index)
+            if sequences[j][-1] == None:
+                return
+
+        for j in range(skip_values):
+            
+            for k in range(len(current_nodes)):
+                current_nodes[k] = strategy.next_node(i, k, current_nodes, switch_graphs)
+                if(current_nodes[k] == None):
+                    return
+        i += 1
+    
+    if colors == None:
+        for j in range(len(sequences)):
+            colors[j] = "black"
+    
+    for j in range(len(sequences)):
+        plot_timeseries(sequences[j], f"walk = {walk}, walkthrough = {walkthrough}, value = {select_value}", "Date", "Value", colors[j])
+
+
 
 #This functions binds two graphs made by the method of sliding window based on time co-ocurrance 
 #and then combines identical nodes(smaller graphs).
@@ -460,7 +914,21 @@ def connect_sliding_win_graphs(data_1, data_2, sliding_win_len, column_name, col
     #toTimeSequence_lowestIndex_random(g, nodes_1, nodes_2, "green", "black", time_series_len=200)
     #toTimeSequence_random(g, nodes_1, nodes_2, "grey", "purple", time_series_len=200)
 
-def middle_man(data_1, data_2, sliding_win_len, column_name):
+def middle_man(data, sliding_win_len, column):
+    g = nx.MultiGraph()
+    node_prev = None
+
+    for i in range(len(data) - sliding_win_len):
+        segment = data[i:i + sliding_win_len][column]
+        h = return_graph(segment)
+        g.add_node(h)
+        if(node_prev != None):
+            g.add_edge(node_prev, h)
+        node_prev = h
+    
+    return g
+
+def middle_man_2(data_1, data_2, sliding_win_len, column_name):
     g = nx.MultiGraph()
 
     node_prev = None
@@ -492,9 +960,49 @@ def middle_man(data_1, data_2, sliding_win_len, column_name):
     
     return g, nodes_1, nodes_2
 
-#connect_sliding_win_graphs(segment_amazon, segment_apple, 5, "Close")
-#toTimeSequence_lowestIndex(segment_amazon, segment_apple, 5, "Close", "red", "blue", time_series_len=200)
-#toTimeSequence_lowestIndex_random(segment_amazon, segment_apple, 5, "Close")
-#toTimeSequence_random(segment_amazon, segment_apple, 5, "Close", "grey", "purple", time_series_len=200)
+def middle_man_multiple(data, sliding_win_len, column):
+    g = nx.MultiGraph()
 
+    node_prev = None
+    nodes = [[] for _ in range(len(data))]
+
+    for i in range(len(nodes)):
+        node_prev = None
+        for j in range(len(data[i]) - sliding_win_len):
+            segment = data[i][j:j + sliding_win_len][column]
+            h = return_graph(segment)
+            g.add_node(h)
+            if(node_prev != None):
+                g.add_edge(node_prev, h)
+            node_prev = h
+            nodes[i].append(h)
+    
+    for i in range(len(data)):
+        for j in range(len(data)):
+            if i == j:
+                continue
+            for k in range(len(nodes[i])):
+                g.add_edge(nodes[i][k], nodes[j][k])
+    
+    return g, nodes
+
+#connect_sliding_win_graphs(segment_amazon, segment_apple, 5, "Close")
+
+#toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walk = "both", walkthrough="weighted", select_value="sequential", skip_values = 5, time_series_len=200, switch_graphs=6)
+#toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walk = "both", walkthrough="weighted")
+#toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walk = "both", select_value="sequential")
+#toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walk = "both")
+#toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walkthrough="weighted", select_value="sequential")
+#toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walkthrough="weighted")
+#toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walkthrough="weighted", select_value="sequential")
+#toTimeSequence_2(segment_amazon, segment_apple, 5, "Close")
+"""
+data = [segment_amazon, segment_apple, segment_amazon, segment_apple]
+colors = ["green", "orange", "blue", "pink"]
+toMultipleTimeSequences(data, 5, "Close", colors, "all", "weighted", "sequential", 200, 5, 10)
+toTimeSequence(segment_amazon, 5, "Close", color = "blue", walkthrough= "weighted", select_value="sequential", time_series_len=200, skip_values=5)
+toTimeSequence(segment_apple, 5, "Close", color = "red", walkthrough= "weighted", select_value="sequential", time_series_len=200, skip_values=5)
+"""
+to_slidingWindowGraph(segment_apple, "pink", 5, "Close")
+sequence_to_graph(segment_apple["Close"], "purple")
 plt.show()
