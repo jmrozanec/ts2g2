@@ -996,13 +996,13 @@ def middle_man_multiple(data, sliding_win_len, column):
 #toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walkthrough="weighted")
 #toTimeSequence_2(segment_amazon, segment_apple, 5, "Close", walkthrough="weighted", select_value="sequential")
 #toTimeSequence_2(segment_amazon, segment_apple, 5, "Close")
-"""
+
 data = [segment_amazon, segment_apple, segment_amazon, segment_apple]
 colors = ["green", "orange", "blue", "pink"]
-toMultipleTimeSequences(data, 5, "Close", colors, "all", "weighted", "sequential", 200, 5, 10)
-toTimeSequence(segment_amazon, 5, "Close", color = "blue", walkthrough= "weighted", select_value="sequential", time_series_len=200, skip_values=5)
-toTimeSequence(segment_apple, 5, "Close", color = "red", walkthrough= "weighted", select_value="sequential", time_series_len=200, skip_values=5)
-"""
-to_slidingWindowGraph(segment_apple, "pink", 5, "Close")
-sequence_to_graph(segment_apple["Close"], "purple")
+toMultipleTimeSequences(data, 5, "Close", colors, "one", "weighted", "sequential", 200, 5, 10)
+#toTimeSequence(segment_amazon, 5, "Close", color = "blue", walkthrough= "weighted", select_value="sequential", time_series_len=200, skip_values=5)
+#toTimeSequence(segment_apple, 5, "Close", color = "red", walkthrough= "weighted", select_value="sequential", time_series_len=200, skip_values=5)
+
+#to_slidingWindowGraph(segment_apple, "pink", 5, "Close")
+#sequence_to_graph(segment_apple["Close"], "purple")
 plt.show()

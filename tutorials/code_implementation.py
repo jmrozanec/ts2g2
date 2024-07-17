@@ -58,13 +58,14 @@ class SlidingWindow(TSprocess):
 
 
 class Link:
-    def __init__(self, graph = None, multi = False):
+    def __init__(self, graph = None, multi = False, att = 'value'):
         self.seasonalites = False
         self.same_timestep = -1
         self.graph = graph
         self.coocurrence = False
         self.multi = multi
         self.period = None
+        self.attribute = att
     
     def seasonalities(self, period):
         self.seasonalites = True
@@ -120,20 +121,20 @@ class Link:
         self.graph = g
 
     def link_seasonalities(self):
-        for i in range(list(self.graph.nodes) - self.period):
+        for i in range(len(self.graph.nodes) - self.period):
             self.graph.add_edge(list(self.graph.nodes)[i], list(self.graph.nodes)[i+self.period], intergraph_binding='seasonality')
 
     def link_same_timesteps(self):
         for node_11, node_12 in zip(self.graph.nodes(data=True), self.graph.nodes):
             for node_21, node_22 in zip(self.graph.nodes(data=True), self.graph.nodes):
-                if  abs(node_11[1]['value'][0] - node_21[1]['value'][0]) < self.same_timestep and node_12 != node_22:
+                if  abs(node_11[1][self.attribute][0] - node_21[1][self.attribute][0]) < self.same_timestep and node_12 != node_22:
                     self.graph.add_edge(node_12, node_22, intergraph_binding = 'timesteps')
 
     def link(self, stud):
         self.graph = stud
 
         if self.seasonalites:
-            self.link_seasonalities(self.graph)
+            self.link_seasonalities()
 
         if self.same_timestep > 0:
             self.link_same_timesteps()
@@ -258,7 +259,7 @@ class XmlSomething(XmlRead):
 
 class TimeSeries():
     
-    def __init__(self, time_series = None, slid_win = False, attribute = "value"):
+    def __init__(self, time_series = None, slid_win = False, attribute = 'value'):
         self.time_series = time_series
         self.strategy = None
         self.graph = None
@@ -300,6 +301,8 @@ class TimeSeries():
                     old_value = list(graph.nodes(data = True))[i][1][self.attribute]
                     new_value = [old_value]
                     list(graph.nodes(data=True))[i][1][self.attribute] = new_value
+            
+            nx.set_edge_attributes(self.graph, "sliding window connection", "strategy")
         
                 
         else:
@@ -336,7 +339,7 @@ class TimeSeries():
                         continue
 
                     if(set(list(node_1.edges)) == set(list(node_2.edges))):
-                        self.graph = combine_nodes_win(self.graph, node_1, node_2, self.attribute)
+                        self.graph = self.combine_nodes_win(self.graph, node_1, node_2, self.attribute)
         else:
 
             for i, node_1 in enumerate(list(self.graph.nodes(data=True))):
@@ -350,12 +353,31 @@ class TimeSeries():
                         continue
 
                     if(node_1[self.attribute] == node_2[self.attribute]):
-                        self.graph = combine_nodes(self.graph, node_1, node_2, self.attribute)
+                        self.graph = self.combine_nodes(self.graph, node_1, node_2, self.attribute)
             
 
         return self
-        #to do: else: combines nodes with same attribute
     
+    def combine_nodes(graph, node_1, node_2, att):
+        node_1[att].append(node_2[att])
+        for neighbor in list(graph.neighbors(node_2)):
+            graph.add_edge(node_1, neighbor)
+        
+        graph.remove_node(node_2)
+        return graph
+
+    def combine_nodes_win(graph, node_1, node_2, att):
+        
+        for i in range(len(list(node_1.nodes(data=True)))):
+            for j in range(len(list(node_2.nodes(data=True))[i][1][att])):
+                list(node_1.nodes(data=True))[i][1][att].append(list(node_2.nodes(data=True))[i][1][att][j])
+        
+        for neighbor in list(graph.neighbors(node_2)):
+            graph.add_edge(node_1, neighbor)
+
+        graph.remove_node(node_2)
+        return graph
+
     def draw(self, color = "black"):
         pos=nx.spring_layout(self.graph, seed=1)
         nx.draw(self.graph, pos, node_size=40, node_color=color)
@@ -394,10 +416,14 @@ class GraphMaster:
         self.nodes = None
         self.data_nodes = None
         self.strategy = strategy
+        self.att = 'value'
     
     def set_nodes(self, nodes, data_nodes):
         pass
     
+    def set_attribute(self, att):
+        self.att = att
+
     def walk_through_all(self):
         self.walk = "all"
         return self
@@ -432,7 +458,7 @@ class GraphMaster:
         if(graph_1.nodes != graph_2.nodes): return False
         if(graph_1.edges != graph_2.edges): return False
         for i in range(len(graph_1.nodes)):
-            if list(list(graph_1.nodes(data=True))[i][1]['value']) != list(list(graph_2.nodes(data=True))[i][1]['value']):
+            if list(list(graph_1.nodes(data=True))[i][1][self.att]) != list(list(graph_2.nodes(data=True))[i][1][self.att]):
                     return False
         return True
 
@@ -484,7 +510,7 @@ class GraphSlidWin(GraphMaster):
         
         strategy = None
 
-        strategy = ChooseStrategySlidWin(self.walk, self.next_node_strategy, self.next_value_strategy, self.graph, self.nodes, dictionaries)
+        strategy = ChooseStrategySlidWin(self.walk, self.next_node_strategy, self.next_value_strategy, self.graph, self.nodes, dictionaries, self.att)
 
         i = 0
         while len(self.sequences[0]) < self.time_series_len:
@@ -499,19 +525,23 @@ class GraphSlidWin(GraphMaster):
 
                 self.sequences[j] = strategy.append(self.sequences[j], current_nodes[j], j, index)
                 if self.sequences[j][-1] == None:
-                    return
+                    return self
+                
 
-            for j in range(self.skip_values):
+            for j in range(self.skip_values + 1):
                 for k in range(len(current_nodes)):
+                    
                     current_nodes[k] = strategy.next_node(i, k, current_nodes, self.switch_graphs)
+
                     if(current_nodes[k] == None):
-                        break
+                        return self
             
+            """
             for k in range(len(current_nodes)):
                     current_nodes[k] = strategy.next_node(i, k, current_nodes, self.switch_graphs)
                     if(current_nodes[k] == None):
                         break
-            
+            """
             i += 1
         return self
 
@@ -545,7 +575,7 @@ class Graph(GraphMaster):
             for j in range(len(list(self.nodes[i]))):
                 dictionaries[i][j] = 0
 
-        strategy = ChooseStrategy(self.walk, self.next_node_strategy, self.next_value_strategy, self.graph, self.nodes, dictionaries)
+        strategy = ChooseStrategy(self.walk, self.next_node_strategy, self.next_value_strategy, self.graph, self.nodes, dictionaries, self.att)
 
         i = 0
         while len(self.sequences[0]) < self.time_series_len:
@@ -563,7 +593,7 @@ class Graph(GraphMaster):
                 if self.sequences[j][-1] == None:
                     return
 
-            for j in range(self.skip_values):
+            for j in range(self.skip_values+1):
                 for k in range(len(current_nodes)):
                     current_nodes[k] = strategy.next_node(i, k, current_nodes, self.switch_graphs)
 
@@ -572,22 +602,18 @@ class Graph(GraphMaster):
                     if(current_nodes[k] == None):
                         break
             
-            for k in range(len(current_nodes)):
-                    current_nodes[k] = strategy.next_node(i, k, current_nodes, self.switch_graphs)
-                    if(current_nodes[k] == None):
-                        break
-            
             i += 1
         return self
 
 class ChooseStrategyMaster:
-    def __init__(self, walk, next_node_strategy, value, graph, nodes, dictionaries):
+    def __init__(self, walk, next_node_strategy, value, graph, nodes, dictionaries, att):
         self.next_node_strategy = next_node_strategy
         self.walk = walk
         self.value = value
         self.graph = graph
         self.nodes = nodes
         self.dictionaries = dictionaries
+        self.att = att
     
     def append_random(self, sequence, graph):
         pass
@@ -602,7 +628,7 @@ class ChooseStrategyMaster:
            return self.append_lowInd(sequence, graph, graph_index, index)
         else:
             print("you chose non-existent method of value selection")
-            print("please choose between: random")
+            print("please choose between: random, sequential")
             return None
     
     def next_node_one_random(self, graph_index, node):
@@ -613,7 +639,8 @@ class ChooseStrategyMaster:
     def next_node_one_weighted(self, graph_index, node):
         neighbors = set(self.graph.neighbors(node))
         neighbors = list(set(self.nodes[graph_index]) & neighbors)
-        
+
+
         weights = []
         total = 0
         for neighbor in neighbors:
@@ -622,6 +649,10 @@ class ChooseStrategyMaster:
             total += num
         for element in weights:
             element /= total
+        
+        if len(neighbors) == 0 or len(weights) == 0:
+            return node
+        #is this ok???
         
         return random.choices(neighbors, weights=weights, k=1)[0]
 
@@ -682,26 +713,26 @@ class ChooseStrategyMaster:
             return None
     
 class ChooseStrategy(ChooseStrategyMaster):
-    def __init__(self, walk, next_node_strategy, value, graph, nodes, dictionaries):
-        super().__init__(walk, next_node_strategy, value, graph, nodes, dictionaries)
+    def __init__(self, walk, next_node_strategy, value, graph, nodes, dictionaries, att):
+        super().__init__(walk, next_node_strategy, value, graph, nodes, dictionaries, att)
     
     def append_random(self, sequence, graph):
-        index = random.randint(0, len(graph[1]['value']) - 1)
-        sequence.append(graph[1]['value'][index])
+        index = random.randint(0, len(graph[1][self.att]) - 1)
+        sequence.append(graph[1][self.att][index])
         return sequence
     
     def append_lowInd(self, sequence, graph, graph_index, index):
-        if int(self.dictionaries[graph_index][index]/2) >= len(list(graph(data=True)[1]['value'])):
+        if int(self.dictionaries[graph_index][index]/2) >= len(list(graph[1][self.att])):
             self.dictionaries[graph_index][index] = 0
         
         ind = int(self.dictionaries[graph_index][index]/2)
-        sequence.append(graph(data = True)[1]['value'][ind])
+        sequence.append(graph[1][self.att][ind])
         self.dictionaries[graph_index][index] += 1
         return sequence
 
 class ChooseStrategySlidWin(ChooseStrategyMaster):
-    def __init__(self, walk, next_node_strategy, value, graph, nodes, dictionaries):
-        super().__init__(walk, next_node_strategy, value, graph, nodes, dictionaries)
+    def __init__(self, walk, next_node_strategy, value, graph, nodes, dictionaries, att):
+        super().__init__(walk, next_node_strategy, value, graph, nodes, dictionaries, att)
     
     def append_random(self, sequence, graph):
 
@@ -709,19 +740,19 @@ class ChooseStrategySlidWin(ChooseStrategyMaster):
         random.shuffle(nodes)
 
         for node in nodes:
-            index = random.randint(0, len(node[1]['value']) - 1)
-            sequence.append(node[1]['value'][index])
+            index = random.randint(0, len(node[1][self.att]) - 1)
+            sequence.append(node[1][self.att][index])
         return sequence
 
     def append_lowInd(self, sequence, graph, graph_index, index):
         
-        if int(self.dictionaries[graph_index][index]/2) >= len(list(graph.nodes(data=True)[0]['value'])):
+        if int(self.dictionaries[graph_index][index]/2) >= len(list(list(graph.nodes(data=True))[0][1][self.att])):
             self.dictionaries[graph_index][index] = 0
     
         ind = int(self.dictionaries[graph_index][index]/2)
 
         for node in graph.nodes(data=True):
-            sequence.append(node[1]['value'][ind])
+            sequence.append(node[1][self.att][ind])
     
         self.dictionaries[graph_index][index] += 1
         return sequence
@@ -738,7 +769,10 @@ class MultivariateTimeSeries:
         return self
     
     def link(self, link_strategy):
-        self.multi_graph = link_strategy.link(self.graphs)
+        if self.multi_graph == None:
+            self.multi_graph = link_strategy.link(self.graphs)
+        else:
+            self.multi_graph = link_strategy.link(self.multi_graph)
         return self
     
     def return_graph(self):
@@ -762,7 +796,7 @@ class MultivariateTimeSeries:
                         continue
 
                     if(set(list(node_1.edges)) == set(list(node_2.edges))):
-                        graph = combine_nodes_win(graph, node_1, node_2, self.attribute)
+                        graph = self.combine_nodes_win(graph, node_1, node_2, self.attribute)
         return
 
     def combine_identical_nodes(self):
@@ -783,7 +817,7 @@ class MultivariateTimeSeries:
                         continue
 
                     if(node_1[self.attribute] == node_2[self.attribute]):
-                        graph = combine_nodes(graph, node_1, node_2, self.attribute)
+                        graph = self.combine_nodes(graph, node_1, node_2, self.attribute)
         return self
     
     def get_graph_nodes(self):
@@ -807,30 +841,30 @@ class MultivariateTimeSeries:
         plt.show()
         return self
 
-def combine_nodes(graph, node_1, node_2, att):
-    node_1[att].append(node_2[att])
-    for neighbor in list(graph.neighbors(node_2)):
-        graph.add_edge(node_1, neighbor)
-    
-    graph.remove_node(node_2)
-    return graph
+    def combine_nodes(graph, node_1, node_2, att):
+        node_1[att].append(node_2[att])
+        for neighbor in list(graph.neighbors(node_2)):
+            graph.add_edge(node_1, neighbor)
+        
+        graph.remove_node(node_2)
+        return graph
 
-def combine_nodes_win(graph, node_1, node_2, att):
-    
-    for i in range(len(list(node_1.nodes(data=True)))):
-        for j in range(len(list(node_2.nodes(data=True))[i][1][att])):
-            list(node_1.nodes(data=True))[i][1][att].append(list(node_2.nodes(data=True))[i][1][att][j])
-    
-    for neighbor in list(graph.neighbors(node_2)):
-        graph.add_edge(node_1, neighbor)
+    def combine_nodes_win(graph, node_1, node_2, att):
+        
+        for i in range(len(list(node_1.nodes(data=True)))):
+            for j in range(len(list(node_2.nodes(data=True))[i][1][att])):
+                list(node_1.nodes(data=True))[i][1][att].append(list(node_2.nodes(data=True))[i][1][att][j])
+        
+        for neighbor in list(graph.neighbors(node_2)):
+            graph.add_edge(node_1, neighbor)
 
-    graph.remove_node(node_2)
-    return graph
+        graph.remove_node(node_2)
+        return graph
 
 
 
 path = os.path.join(os.getcwd(), "apple", "APPLE.csv")
-"""
+
 TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(60, 120))\
     .to_graph(NaturalVisibility())\
@@ -841,27 +875,31 @@ TimeSeries().from_csv(CsvStock(path, "Close"))\
 
 
 x = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(60, 70))\
+    .process(Segment(60, 90))\
     .process(SlidingWindow(5))\
     .to_graph(NaturalVisibility())\
+    .combine_identical_nodes()\
     .draw()
 
 y = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(120, 130))\
+    .process(Segment(120, 150))\
     .process(SlidingWindow(5))\
     .to_graph(NaturalVisibility())\
+    .combine_identical_nodes()\
     .draw()
 
 z = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(180, 190))\
+    .process(Segment(180, 210))\
     .process(SlidingWindow(5))\
     .to_graph(NaturalVisibility())\
+    .combine_identical_nodes()\
     .draw()
 
 w = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(240, 250))\
+    .process(Segment(240, 270))\
     .process(SlidingWindow(5))\
     .to_graph(NaturalVisibility())\
+    .combine_identical_nodes()\
     .draw()
 
 MultivariateTimeSeries()\
@@ -891,12 +929,10 @@ TimeSeries()\
 
 GraphSlidWin(a.return_graph())\
     .set_nodes(a.get_graph_nodes())\
-    .walk_through_all()\
-    .change_graphs_every_x_steps(2)\
     .choose_next_node("weighted")\
-    .choose_next_value("random")\
-    .skip_every_x_steps(1)\
-    .ts_length(50)\
+    .choose_next_value("sequential")\
+    .skip_every_x_steps(0)\
+    .ts_length(100)\
     .to_multiple_time_sequences()\
     .draw()
 
@@ -908,26 +944,30 @@ GraphSlidWin(x.return_graph())\
     .ts_length(50)\
     .to_time_sequence()\
     .draw()
-"""
+
 x = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(60, 70))\
+    .process(Segment(60, 80))\
     .to_graph(NaturalVisibility())\
     .link(Link().same_timesteps(2))\
+    .combine_identical_nodes()\
     .draw()
 
 y = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(120, 130))\
+    .process(Segment(120, 140))\
     .to_graph(NaturalVisibility())\
+    .combine_identical_nodes()\
     .draw()
 
 z = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(180, 190))\
+    .process(Segment(180, 200))\
     .to_graph(NaturalVisibility())\
+    .combine_identical_nodes()\
     .draw()
 
 w = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(240, 250))\
+    .process(Segment(240, 260))\
     .to_graph(NaturalVisibility())\
+    .combine_identical_nodes()\
     .draw()
 
 a = MultivariateTimeSeries()\
@@ -936,6 +976,7 @@ a = MultivariateTimeSeries()\
     .add(z)\
     .add(w)\
     .link(Link().time_coocurence())\
+    .link(Link().same_timesteps(2).seasonalities(15))\
     .combine_identical_nodes()\
     .draw("purple")
 
@@ -943,8 +984,8 @@ Graph(a.return_graph())\
     .set_nodes(a.get_graph_nodes(), a.get_graph_nodes_data())\
     .walk_through_all()\
     .change_graphs_every_x_steps(2)\
-    .choose_next_node("weighted")\
-    .choose_next_value("random")\
+    .choose_next_node("random")\
+    .choose_next_value("sequential")\
     .skip_every_x_steps(1)\
     .ts_length(50)\
     .to_multiple_time_sequences()\
@@ -958,5 +999,3 @@ Graph(x.return_graph())\
     .ts_length(50)\
     .to_time_sequence()\
     .draw()
-
-#poimenuj vse edge
