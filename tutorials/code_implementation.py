@@ -35,7 +35,7 @@ class Segment(TSprocess):
         self.segment_end = segment_end
     
     def process(self, time_series):
-        return TimeSeries(time_series[self.segment_start:self.segment_end])
+        return TimeSeriesToGraph(time_series[self.segment_start:self.segment_end])
 
 class SlidingWindow(TSprocess):
 
@@ -50,9 +50,9 @@ class SlidingWindow(TSprocess):
         
         new_series = []
         for i in range(len(segments)):
-            new_series.append(TimeSeries(segments[i]))
+            new_series.append(TimeSeriesToGraph(segments[i]))
         
-        return TimeSeries(new_series, True)
+        return TimeSeriesToGraph(new_series, True)
 
 
 
@@ -72,7 +72,7 @@ class Link:
         self.period = period
         return self
     
-    def same_timesteps(self, allowed_difference):
+    def same_value(self, allowed_difference):
         self.same_timestep = allowed_difference
         return self
 
@@ -257,12 +257,13 @@ class XmlSomething(XmlRead):
 
 
 
-class TimeSeries():
+class TimeSeriesToGraph():
     
     def __init__(self, time_series = None, slid_win = False, attribute = 'value'):
         self.time_series = time_series
         self.strategy = None
         self.graph = None
+        self.orig_graph = None
         self.slid_win = slid_win
         self.slid_graphs = []
         self.attribute = attribute
@@ -277,6 +278,11 @@ class TimeSeries():
 
     def return_graph(self):
         return self.graph
+
+    def return_original_graph(self):
+        if self.orig_graph == None:
+            return self.graph
+        return self.orig_graph
 
     def process(self, ts_processing_strategy = None):
         if ts_processing_strategy == None:
@@ -325,7 +331,7 @@ class TimeSeries():
         return self
     
     def combine_identical_nodes(self):
-
+        self.orig_graph = self.graph.copy()
         if self.slid_win:
 
             for i, node_1 in enumerate(list(self.graph.nodes)):
@@ -339,7 +345,7 @@ class TimeSeries():
                         continue
 
                     if(set(list(node_1.edges)) == set(list(node_2.edges))):
-                        self.graph = self.combine_nodes_win(self.graph, node_1, node_2, self.attribute)
+                        self.graph = self.__combine_nodes_win(self.graph, node_1, node_2, self.attribute)
         else:
 
             for i, node_1 in enumerate(list(self.graph.nodes(data=True))):
@@ -353,12 +359,13 @@ class TimeSeries():
                         continue
 
                     if(node_1[self.attribute] == node_2[self.attribute]):
-                        self.graph = self.combine_nodes(self.graph, node_1, node_2, self.attribute)
+                        self.graph = self.__combine_nodes(self.graph, node_1, node_2, self.attribute)
             
 
         return self
     
-    def combine_nodes(graph, node_1, node_2, att):
+    def __combine_nodes(self, graph, node_1, node_2, att):
+
         node_1[att].append(node_2[att])
         for neighbor in list(graph.neighbors(node_2)):
             graph.add_edge(node_1, neighbor)
@@ -366,7 +373,7 @@ class TimeSeries():
         graph.remove_node(node_2)
         return graph
 
-    def combine_nodes_win(graph, node_1, node_2, att):
+    def __combine_nodes_win(self, graph, node_1, node_2, att):
         
         for i in range(len(list(node_1.nodes(data=True)))):
             for j in range(len(list(node_2.nodes(data=True))[i][1][att])):
@@ -379,7 +386,7 @@ class TimeSeries():
         return graph
 
     def draw(self, color = "black"):
-        pos=nx.spring_layout(self.graph, seed=1)
+        pos=nx.spring_layout(self. graph, seed=1)
         nx.draw(self.graph, pos, node_size=40, node_color=color)
         plt.show()
         return self
@@ -478,7 +485,7 @@ class GraphMaster:
                 self.colors.append("black")
         
         for j in range(len(self.sequences)):
-            self.plot_timeseries(self.sequences[j], f"walk = {self.walk}, next_node_strategy = {self.next_node_strategy}, value = {self.next_value_strategy}", "Date", "Value", self.colors[j])
+            self.plot_timeseries(self.sequences[j], f"walk = {self.walk}, next_node_strategy = {self.next_node_strategy}, next_value = {self.next_value_strategy}", "Date", "Value", self.colors[j])
         plt.show()
 
 class GraphSlidWin(GraphMaster):
@@ -650,8 +657,8 @@ class ChooseStrategyMaster:
         for element in weights:
             element /= total
         
-        if len(neighbors) == 0 or len(weights) == 0:
-            return node
+        #if len(neighbors) == 0 or len(weights) == 0:
+        #    return node
         #is this ok???
         
         return random.choices(neighbors, weights=weights, k=1)[0]
@@ -758,7 +765,7 @@ class ChooseStrategySlidWin(ChooseStrategyMaster):
         return sequence
 
 
-class MultivariateTimeSeries:
+class MultivariateTimeSeriesToGraph:
     def __init__(self):
         self.graphs = {}
         self.multi_graph = None
@@ -779,31 +786,37 @@ class MultivariateTimeSeries:
         return self.multi_graph
 
     def add(self, time_serie):
-        self.graphs[time_serie.hash()] = time_serie.return_graph()
+        self.graphs[time_serie.hash()] = time_serie.return_original_graph()
         return self
     
     def combine_identical_nodes_win(self):
         for graph in self.graphs.values():
-
+            
             for i, node_1 in enumerate(list(graph.nodes)):
-                if node_1 not in graph:
+                if node_1 not in self.multi_graph:
                     continue
 
                 for node_2 in list(graph.nodes)[i+1:]:
                     if node_2 == None:
                         break
-                    if node_2 not in graph:
+                    if node_2 not in self.multi_graph:
                         continue
 
-                    if(set(list(node_1.edges)) == set(list(node_2.edges))):
+                    if(self.hash(node_1) == self.hash(node_2)):
                         graph = self.combine_nodes_win(graph, node_1, node_2, self.attribute)
+            
+        
         return
+
+    def hash(self, graph):
+        str_to_hash = str(graph.nodes()) + str(graph.edges())
+        return hashlib.md5(str_to_hash.encode()).hexdigest()
 
     def combine_identical_nodes(self):
         if isinstance(self.multi_graph, nx.MultiGraph):
             self.combine_identical_nodes_win()
             return self
-        
+
         for graph in self.graphs.values():
 
             for i, node_1 in enumerate(list(graph.nodes(data=True))):
@@ -841,7 +854,7 @@ class MultivariateTimeSeries:
         plt.show()
         return self
 
-    def combine_nodes(graph, node_1, node_2, att):
+    def combine_nodes(self, graph, node_1, node_2, att):
         node_1[att].append(node_2[att])
         for neighbor in list(graph.neighbors(node_2)):
             graph.add_edge(node_1, neighbor)
@@ -849,67 +862,62 @@ class MultivariateTimeSeries:
         graph.remove_node(node_2)
         return graph
 
-    def combine_nodes_win(graph, node_1, node_2, att):
+    def combine_nodes_win(self, graph, node_1, node_2, att):
         
         for i in range(len(list(node_1.nodes(data=True)))):
             for j in range(len(list(node_2.nodes(data=True))[i][1][att])):
                 list(node_1.nodes(data=True))[i][1][att].append(list(node_2.nodes(data=True))[i][1][att][j])
         
-        for neighbor in list(graph.neighbors(node_2)):
-            graph.add_edge(node_1, neighbor)
+        for neighbor in list(self.multi_graph.neighbors(node_2)):
+            self.multi_graph.add_edge(node_1, neighbor)
+        
+        #for neighbor in list(graph.neighbors(node_2)):
+            #graph.add_edge(node_1, neighbor)
 
-        graph.remove_node(node_2)
+        self.multi_graph.remove_node(node_2)
+        #graph.remove_node(node_2)
         return graph
 
 
-
-path = os.path.join(os.getcwd(), "apple", "APPLE.csv")
+"""
+path = os.path.join(os.getcwd(), "amazon", "AMZN.csv")
 
 TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(60, 120))\
     .to_graph(NaturalVisibility())\
-    .combine_identical_nodes()\
     .add_edge(0,2)\
     .add_edge(13,35, 17)\
+    .link(Link().same_value(2).seasonalities(15))\
     .draw("blue")
-
 
 x = TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(60, 90))\
     .process(SlidingWindow(5))\
     .to_graph(NaturalVisibility())\
     .combine_identical_nodes()\
-    .draw()
+    .draw("blue")
+
 
 y = TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(120, 150))\
     .process(SlidingWindow(5))\
     .to_graph(NaturalVisibility())\
     .combine_identical_nodes()\
-    .draw()
+    .draw("green")
 
 z = TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(180, 210))\
     .process(SlidingWindow(5))\
     .to_graph(NaturalVisibility())\
     .combine_identical_nodes()\
-    .draw()
+    .draw("purple")
 
 w = TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(240, 270))\
     .process(SlidingWindow(5))\
     .to_graph(NaturalVisibility())\
     .combine_identical_nodes()\
-    .draw()
-
-MultivariateTimeSeries()\
-    .add(x)\
-    .add(y)\
-    .add(z)\
-    .add(w)\
-    .link(Link(multi=True).time_coocurence())\
-    .draw("red")
-
+    .draw("pink")
 
 a = MultivariateTimeSeries()\
     .add(x)\
@@ -917,7 +925,8 @@ a = MultivariateTimeSeries()\
     .add(z)\
     .add(w)\
     .link(Link(multi=True).time_coocurence())\
-    .combine_identical_nodes()
+    .combine_identical_nodes()\
+    .draw("red")
 
 TimeSeries()\
     .from_csv(CsvStock(path, "Close"))\
@@ -945,40 +954,43 @@ GraphSlidWin(x.return_graph())\
     .to_time_sequence()\
     .draw()
 
-x = TimeSeries().from_csv(CsvStock(path, "Close"))\
+
+i = TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(60, 80))\
     .to_graph(NaturalVisibility())\
-    .link(Link().same_timesteps(2))\
+    .link(Link().same_value(2))\
     .combine_identical_nodes()\
     .draw()
 
-y = TimeSeries().from_csv(CsvStock(path, "Close"))\
+j = TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(120, 140))\
     .to_graph(NaturalVisibility())\
     .combine_identical_nodes()\
     .draw()
 
-z = TimeSeries().from_csv(CsvStock(path, "Close"))\
+k = TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(180, 200))\
     .to_graph(NaturalVisibility())\
     .combine_identical_nodes()\
     .draw()
 
-w = TimeSeries().from_csv(CsvStock(path, "Close"))\
+l = TimeSeries().from_csv(CsvStock(path, "Close"))\
     .process(Segment(240, 260))\
     .to_graph(NaturalVisibility())\
     .combine_identical_nodes()\
     .draw()
 
+#TODO: convert same_value into by_value(strategy), where strategy = same_value, same_quantile, proximity_criteria, etc.
+#TODO: separate link into two objects depending on what type of graph you have.
 a = MultivariateTimeSeries()\
-    .add(x)\
-    .add(y)\
-    .add(z)\
-    .add(w)\
+    .add(i)\
+    .add(j)\
+    .add(k)\
+    .add(l)\
     .link(Link().time_coocurence())\
-    .link(Link().same_timesteps(2).seasonalities(15))\
+    .link(Link().same_value(2).seasonalities(15))\
     .combine_identical_nodes()\
-    .draw("purple")
+    .draw("purple")    
 
 Graph(a.return_graph())\
     .set_nodes(a.get_graph_nodes(), a.get_graph_nodes_data())\
@@ -991,11 +1003,23 @@ Graph(a.return_graph())\
     .to_multiple_time_sequences()\
     .draw()
 
-Graph(x.return_graph())\
-    .set_nodes(x.return_graph().nodes, x.return_graph().nodes(data=True))\
+
+
+Graph(i.return_graph())\
+    .set_nodes(i.return_graph().nodes, i.return_graph().nodes(data=True))\
     .choose_next_node("weighted")\
     .choose_next_value("random")\
     .skip_every_x_steps(1)\
-    .ts_length(50)\
+    .ts_length(500)\
     .to_time_sequence()\
     .draw()
+
+GraphSlidWin(x.return_graph())\
+    .set_nodes(x.return_graph().nodes)\
+    .walk_through_all()\
+    .choose_next_node("weighted")\
+    .choose_next_value("sequential")\
+    .ts_length(100)\
+    .to_time_sequence()\
+    .draw()
+"""
