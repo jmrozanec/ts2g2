@@ -21,7 +21,7 @@ import random
 import hashlib
 
 class TSprocess:
-
+    """Superclass of classes Segment and SlidingWindow"""
     def __init__(self):
         pass
 
@@ -35,6 +35,7 @@ class Segment(TSprocess):
         self.segment_end = segment_end
     
     def process(self, time_series):
+        """returns a TimeSeriesToGraph object, that has a wanted segment of original time serie"""
         return TimeSeriesToGraph(time_series[self.segment_start:self.segment_end])
 
 class SlidingWindow(TSprocess):
@@ -44,6 +45,8 @@ class SlidingWindow(TSprocess):
         self.win_move_len = win_move_len
     
     def process(self, time_series):
+        """Returns a TimeSeriesToGraph object, that has an array of segments of window_size size and each win_move_len data apart.
+        This function of this class is called, when we want to create a graph using sliding window mehanism."""
         segments = []
         for i in range(0, len(time_series) - self.window_size, self.win_move_len):
             segments.append(time_series[i:i + self.window_size])
@@ -68,19 +71,23 @@ class Link:
         self.attribute = att
     
     def seasonalities(self, period):
+        """Notes that we want to connect based on seasonalities, ad sets the period parameter."""
         self.seasonalites = True
         self.period = period
         return self
     
     def same_value(self, allowed_difference):
+        """Notes that we want to connect based on similarity of values."""
         self.same_timestep = allowed_difference
         return self
 
     def time_coocurence(self):
+        """Notes that we want to connect graphs in amultivariate graph based on time co-ocurrance."""
         self.coocurrence = True
         return self
     
-    def link_positional(self, stud):
+    def link_positional(self, graph):
+        """Connects graphs in a multivariate graph based on time co-ocurrance."""
         g = None
         if self.multi:
             g = nx.MultiGraph()
@@ -89,18 +96,18 @@ class Link:
 
         min_size = None
         
-        for graph in stud.values():
+        for graph in graph.values():
             if min_size == None or len(graph.nodes) < min_size:
                 min_size = len(graph.nodes)
 
-        for hash, graph in stud.items():
+        for hash, graph in graph.items():
             nx.set_node_attributes(graph, hash, 'id')
             i = 0
             for node in list(graph.nodes(data = True)):
                 node[1]['order'] = i
                 i += 1
         
-        for graph in stud.values():
+        for graph in graph.values():
             g = nx.compose(g, graph)
 
         i = 0
@@ -121,17 +128,20 @@ class Link:
         self.graph = g
 
     def link_seasonalities(self):
+        """Links nodes that are self.period instances apart."""
         for i in range(len(self.graph.nodes) - self.period):
             self.graph.add_edge(list(self.graph.nodes)[i], list(self.graph.nodes)[i+self.period], intergraph_binding='seasonality')
 
     def link_same_timesteps(self):
+        """Links nodes whose values are at most sels.same_timestep apart."""
         for node_11, node_12 in zip(self.graph.nodes(data=True), self.graph.nodes):
             for node_21, node_22 in zip(self.graph.nodes(data=True), self.graph.nodes):
                 if  abs(node_11[1][self.attribute][0] - node_21[1][self.attribute][0]) < self.same_timestep and node_12 != node_22:
                     self.graph.add_edge(node_12, node_22, intergraph_binding = 'timesteps')
 
-    def link(self, stud):
-        self.graph = stud
+    def link(self, graph):
+        """Calls functions to link nodes based on what we set before."""
+        self.graph = graph
 
         if self.seasonalites:
             self.link_seasonalities()
@@ -140,7 +150,7 @@ class Link:
             self.link_same_timesteps()
         
         if self.coocurrence:
-            self.link_positional(stud)
+            self.link_positional(graph)
 
         return self.graph
 
@@ -148,6 +158,8 @@ class Link:
 
 
 class Strategy:
+    """Superclass of classes NaturalVisibility and HorizontalVisibility. Sets and returns a strategy with which we can
+    convert time series into graphs."""
 
     def __init__(self):
         self.visibility = []
@@ -156,17 +168,21 @@ class Strategy:
         self.str_name = None
 
     def with_angle(self, angle):
+        """Sets an angle in which range must a node be to be considered for connection."""
         self.visibility.append(TimeseriesEdgeVisibilityConstraintsVisibilityAngle(angle))
         self.str_name += (f" with angle({angle})")
         return self
 
     def with_limit(self, limit):
+        """Sets a limit as to how many data instances two nodes must be apart to be considered for connection."""
         pass
     
     def strategy_name(self):
+        """Returns name of used strategy."""
         return self.str_name
 
     def get_strategy(self):
+        """Returns strategy."""
         return TimeseriesToGraphStrategy(
             visibility_constraints = self.visibility,
             graph_type= self.graph_type,
@@ -174,7 +190,7 @@ class Strategy:
         )
 
 class NaturalVisibility(Strategy):
-
+    """As initial strategy sets Natural visibility strategy."""
     def __init__(self):
         super().__init__()
         self.visibility = [TimeseriesEdgeVisibilityConstraintsNatural()]
@@ -186,7 +202,7 @@ class NaturalVisibility(Strategy):
         return self
     
 class HorizontalVisibility(Strategy):
-
+    """As initial strategy sets Horizontal visibility strategy."""
     def __init__(self):
         super().__init__()
         self.visibility = [TimeseriesEdgeVisibilityConstraintsHorizontal()]
@@ -201,6 +217,7 @@ class HorizontalVisibility(Strategy):
 
 
 class CsvRead:
+    """Superclass of all classes for extraxtion of data from csv files.""" 
     def __init__(self):
         pass
 
@@ -208,6 +225,7 @@ class CsvRead:
         pass
 
 class CsvStock(CsvRead):
+    """Returns proccessed data from csv file with data sorted by date."""
     def __init__(self, path, y_column):
         self.path = path
         self.y_column = y_column
@@ -220,6 +238,7 @@ class CsvStock(CsvRead):
         return time_series
 
 class XmlRead:
+    """Superclass of all classes for extraxtion of data from xml files."""
     def __init__(self):
         pass
 
@@ -227,6 +246,7 @@ class XmlRead:
         pass
 
 class XmlSomething(XmlRead):
+    """One of the ways of extraction of data from xml file."""
     def __init__(self, path, item, season = "Annual"):
         self.path = path
         self.item = item
@@ -269,22 +289,28 @@ class TimeSeriesToGraph():
         self.attribute = attribute
     
     def from_csv(self, csv_read):
+        """Gets data from csv file."""
         self.time_series = csv_read.from_csv()
         return self
     
     def from_xml(self, xml_read):
+        """Gets data from xml file."""
         self.time_series = xml_read.from_xml()
         return self
 
     def return_graph(self):
+        """Returns graph."""
         return self.graph
 
     def return_original_graph(self):
+        """Returns graph that still has all of the nodes."""
         if self.orig_graph == None:
             return self.graph
         return self.orig_graph
 
     def process(self, ts_processing_strategy = None):
+        """Returns a TimeSeriesToGraph object that is taylored by ts_processing_strategy. 
+        ts_processing_strategy is expected to be an object of a subclass of class TSprocess."""
         if ts_processing_strategy == None:
             return self
 
@@ -292,6 +318,8 @@ class TimeSeriesToGraph():
         #to do: how to return efficiently
 
     def to_graph(self, strategy):
+        """Converts time serie to graph using strategy strategy. 
+        Parameter strategy must be of class Strategy or any of its subclasses."""
         self.strategy = strategy.get_strategy()
 
         if self.slid_win:
@@ -331,6 +359,8 @@ class TimeSeriesToGraph():
         return self
     
     def combine_identical_nodes(self):
+        """Combines nodes that have same value of attribute self.attribute if graph is classical graph and
+        nodes that are identical graphs if graph is created using sliding window mechanism."""
         self.orig_graph = self.graph.copy()
         if self.slid_win:
 
@@ -365,7 +395,7 @@ class TimeSeriesToGraph():
         return self
     
     def __combine_nodes(self, graph, node_1, node_2, att):
-
+        """Combines nodes node_1 and node_2."""
         node_1[att].append(node_2[att])
         for neighbor in list(graph.neighbors(node_2)):
             graph.add_edge(node_1, neighbor)
@@ -374,7 +404,7 @@ class TimeSeriesToGraph():
         return graph
 
     def __combine_nodes_win(self, graph, node_1, node_2, att):
-        
+        """Combines nodes node_1 and node_2, that are graphs."""
         for i in range(len(list(node_1.nodes(data=True)))):
             for j in range(len(list(node_2.nodes(data=True))[i][1][att])):
                 list(node_1.nodes(data=True))[i][1][att].append(list(node_2.nodes(data=True))[i][1][att][j])
@@ -386,16 +416,19 @@ class TimeSeriesToGraph():
         return graph
 
     def draw(self, color = "black"):
+        """Draws the created graph"""
         pos=nx.spring_layout(self. graph, seed=1)
         nx.draw(self.graph, pos, node_size=40, node_color=color)
         plt.show()
         return self
     
     def link(self, link_strategy):
+        """Links nodes based on link_strategy. link_strategy is object of class Link."""
         self.graph = link_strategy.link(self.graph)
         return self
         
     def add_edge(self, node_1, node_2, weight=None):
+        """Adds edge between node_1 and node_2."""
         if weight == None:
             self.graph.add_edge(list(self.graph.nodes)[node_1], list(self.graph.nodes)[node_2])
         else:
@@ -403,6 +436,7 @@ class TimeSeriesToGraph():
         return self
     
     def hash(self):
+        """Returns unique hash of this graph."""
         str_to_hash = str(self.graph.nodes()) + str(self.graph.edges())
         return hashlib.md5(str_to_hash.encode()).hexdigest()
 
@@ -410,6 +444,7 @@ class TimeSeriesToGraph():
 
 
 class GraphMaster:
+    """Superclass of classes GraphSlidWin and Graph"""
     def __init__(self, graph, strategy):
         self.graph = graph
         self.next_node_strategy = "random"
@@ -426,11 +461,14 @@ class GraphMaster:
         self.att = 'value'
     
     def set_nodes(self, nodes, data_nodes):
+        """Sets parameters to be used if we have multivariate graph and need nodes from specific original graph."""
         pass
     
     def set_attribute(self, att):
         self.att = att
 
+    """Next 6 function set the parameters, that are later on used as a strategy for converting graph to time series."""
+    """--->"""
     def walk_through_all(self):
         self.walk = "all"
         return self
@@ -454,14 +492,18 @@ class GraphMaster:
     def ts_length(self, x):
         self.time_series_len = x
         return self
-    
+    """<---"""
+
     def to_time_sequence(self):
+        """Adjusts parameters nodes and data_nodes to fit function to_multiple_time_sequences."""
         pass
     
     def to_multiple_time_sequences(self):
+        """Converts graph into time sequences."""
         pass
 
     def is_equal(self, graph_1, graph_2):
+        """Compares two graphs if they are equal."""
         if(graph_1.nodes != graph_2.nodes): return False
         if(graph_1.edges != graph_2.edges): return False
         for i in range(len(graph_1.nodes)):
@@ -470,6 +512,7 @@ class GraphMaster:
         return True
 
     def plot_timeseries(self, sequence, title, x_legend, y_legend, color):
+        """Function to sets parameters to draw time series."""
         plt.figure(figsize=(10, 6))
         plt.plot(sequence, linestyle='-', color=color)
         
@@ -479,6 +522,7 @@ class GraphMaster:
         plt.grid(True)
 
     def draw(self):
+        """Draws time series."""
         if self.colors == None:
             self.colors = []
             for j in range(len(self.sequences)):
@@ -489,6 +533,7 @@ class GraphMaster:
         plt.show()
 
 class GraphSlidWin(GraphMaster):
+    """Class that converts graphs made using sliding window mechanism back to time series"""
     def __init__(self, graph):
         super().__init__(graph, "slid_win")
     
@@ -553,6 +598,7 @@ class GraphSlidWin(GraphMaster):
         return self
 
 class Graph(GraphMaster):
+    """Class that turns ordinary graphs back to time series."""
     def __init__(self, graph):
         super().__init__(graph, "classic")
     
@@ -623,9 +669,11 @@ class ChooseStrategyMaster:
         self.att = att
     
     def append_random(self, sequence, graph):
+        """To a sequence appends a random value of a node it is currently on."""
         pass
 
     def append_lowInd(self, sequence, graph, graph_index, index):
+        """To a sequence appends a successive value of a node it is currently on."""
         pass
 
     def append(self, sequence, graph, graph_index, index):
@@ -639,11 +687,13 @@ class ChooseStrategyMaster:
             return None
     
     def next_node_one_random(self, graph_index, node):
+        """From neighbors of the previous node randomly chooses next node."""
         neighbors = set(self.graph.neighbors(node))
         neighbors = list(set(self.nodes[graph_index]) & neighbors)
         return random.choice(neighbors)
 
     def next_node_one_weighted(self, graph_index, node):
+        """From neighbors of the previous node chooses next one based on number of connections between them."""
         neighbors = set(self.graph.neighbors(node))
         neighbors = list(set(self.nodes[graph_index]) & neighbors)
 
@@ -657,13 +707,11 @@ class ChooseStrategyMaster:
         for element in weights:
             element /= total
         
-        #if len(neighbors) == 0 or len(weights) == 0:
-        #    return node
-        #is this ok???
-        
         return random.choices(neighbors, weights=weights, k=1)[0]
 
     def next_node_one(self, graph_index, node):
+        """If we have multivariate graph this function walks on first ones and 
+        for others graphs chooses next node based on neighbors of the node in first graph."""
         if self.next_node_strategy == "random":
             return self.next_node_one_random(graph_index, node)
         elif  self.next_node_strategy == "weighted":
@@ -674,6 +722,7 @@ class ChooseStrategyMaster:
             return None
     
     def next_node_all_random(self, i, graph_index, nodes, switch):
+        """From neighbors of the previous node randomly chooses next node."""
         index = int((i/switch) % len(nodes))
         neighbors = set(self.graph.neighbors(nodes[index]))
         
@@ -681,7 +730,7 @@ class ChooseStrategyMaster:
         return random.choice(neighbors)
     
     def next_node_all_weighted(self, i, graph_index, nodes, switch):
-        
+        """From neighbors of the previous node chooses next one based on number of connections between them."""
         index = int((i/switch) % len(nodes))
         neighbors = set(self.graph.neighbors(nodes[index]))
         neighbors = list(set(self.nodes[graph_index]) & neighbors)
@@ -700,6 +749,8 @@ class ChooseStrategyMaster:
         return random.choices(neighbors, weights=weights, k=1)[0]
     
     def next_node_all(self, i, graph_index, nodes, switch):
+        """If we have multivariate graph this function walks on all graphs and switches between them every 'switch' steps and
+        for others graphs chooses next node based on neighbors of the node in cuurent graph."""
         if self.next_node_strategy == "random":
             return self.next_node_all_random(i, graph_index, nodes, switch)
         elif  self.next_node_strategy == "weighted":
@@ -720,6 +771,7 @@ class ChooseStrategyMaster:
             return None
     
 class ChooseStrategy(ChooseStrategyMaster):
+    """Subclass that alters few methods to fit normal graph."""
     def __init__(self, walk, next_node_strategy, value, graph, nodes, dictionaries, att):
         super().__init__(walk, next_node_strategy, value, graph, nodes, dictionaries, att)
     
@@ -738,6 +790,7 @@ class ChooseStrategy(ChooseStrategyMaster):
         return sequence
 
 class ChooseStrategySlidWin(ChooseStrategyMaster):
+    """Subclass that alters few methods to fit graph made using sliding window mechanism."""
     def __init__(self, walk, next_node_strategy, value, graph, nodes, dictionaries, att):
         super().__init__(walk, next_node_strategy, value, graph, nodes, dictionaries, att)
     
@@ -766,6 +819,7 @@ class ChooseStrategySlidWin(ChooseStrategyMaster):
 
 
 class MultivariateTimeSeriesToGraph:
+    """Class that combines multiple time series."""
     def __init__(self):
         self.graphs = {}
         self.multi_graph = None
@@ -776,6 +830,7 @@ class MultivariateTimeSeriesToGraph:
         return self
     
     def link(self, link_strategy):
+        """links nodes based on object link_strategy of class Link"""
         if self.multi_graph == None:
             self.multi_graph = link_strategy.link(self.graphs)
         else:
@@ -783,13 +838,16 @@ class MultivariateTimeSeriesToGraph:
         return self
     
     def return_graph(self):
+        """Returns graph."""
         return self.multi_graph
 
     def add(self, time_serie):
+        """Adds object time_serie of class TimeSeriesToGraph to a dictionary."""
         self.graphs[time_serie.hash()] = time_serie.return_original_graph()
         return self
     
     def combine_identical_nodes_win(self):
+        """Combines nodes that are identical graphs in a graph made using sliding window mechanism."""
         for graph in self.graphs.values():
             
             for i, node_1 in enumerate(list(graph.nodes)):
@@ -803,16 +861,18 @@ class MultivariateTimeSeriesToGraph:
                         continue
 
                     if(self.hash(node_1) == self.hash(node_2)):
-                        graph = self.combine_nodes_win(graph, node_1, node_2, self.attribute)
+                        graph = self.__combine_nodes_win(graph, node_1, node_2, self.attribute)
             
         
         return
 
     def hash(self, graph):
+        """Returns unique hash of this graph."""
         str_to_hash = str(graph.nodes()) + str(graph.edges())
         return hashlib.md5(str_to_hash.encode()).hexdigest()
 
     def combine_identical_nodes(self):
+        """Combines nodes that have same value of attribute self.attribute"""
         if isinstance(self.multi_graph, nx.MultiGraph):
             self.combine_identical_nodes_win()
             return self
@@ -830,10 +890,11 @@ class MultivariateTimeSeriesToGraph:
                         continue
 
                     if(node_1[self.attribute] == node_2[self.attribute]):
-                        graph = self.combine_nodes(graph, node_1, node_2, self.attribute)
+                        graph = self.__combine_nodes(graph, node_1, node_2, self.attribute)
         return self
     
     def get_graph_nodes(self):
+        """returns all nodes of graph"""
         nodes = []
         for graph in self.graphs.values():
             nodes.append(list(graph.nodes))
@@ -841,6 +902,7 @@ class MultivariateTimeSeriesToGraph:
         return nodes
 
     def get_graph_nodes_data(self):
+        """Returns all nodes of graphs with their data."""
         nodes = []
         for graph in self.graphs.values():
             nodes.append(list(graph.nodes(data = True)))
@@ -848,13 +910,15 @@ class MultivariateTimeSeriesToGraph:
         return nodes
     
     def draw(self, color = "black"):
+        """Draws graph."""
         pos=nx.spring_layout(self.multi_graph, seed=1)
         nx.draw(self.multi_graph, pos, node_size=40, node_color=color)
 
         plt.show()
         return self
 
-    def combine_nodes(self, graph, node_1, node_2, att):
+    def __combine_nodes(self, graph, node_1, node_2, att):
+        """Combines nodes node_1 and node_2."""
         node_1[att].append(node_2[att])
         for neighbor in list(graph.neighbors(node_2)):
             graph.add_edge(node_1, neighbor)
@@ -862,7 +926,8 @@ class MultivariateTimeSeriesToGraph:
         graph.remove_node(node_2)
         return graph
 
-    def combine_nodes_win(self, graph, node_1, node_2, att):
+    def __combine_nodes_win(self, graph, node_1, node_2, att):
+        """Combines nodes node_1 and node_2, that are graphs."""
         
         for i in range(len(list(node_1.nodes(data=True)))):
             for j in range(len(list(node_2.nodes(data=True))[i][1][att])):
@@ -879,147 +944,5 @@ class MultivariateTimeSeriesToGraph:
         return graph
 
 
-"""
-path = os.path.join(os.getcwd(), "amazon", "AMZN.csv")
-
-TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(60, 120))\
-    .to_graph(NaturalVisibility())\
-    .add_edge(0,2)\
-    .add_edge(13,35, 17)\
-    .link(Link().same_value(2).seasonalities(15))\
-    .draw("blue")
-
-x = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(60, 90))\
-    .process(SlidingWindow(5))\
-    .to_graph(NaturalVisibility())\
-    .combine_identical_nodes()\
-    .draw("blue")
-
-
-y = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(120, 150))\
-    .process(SlidingWindow(5))\
-    .to_graph(NaturalVisibility())\
-    .combine_identical_nodes()\
-    .draw("green")
-
-z = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(180, 210))\
-    .process(SlidingWindow(5))\
-    .to_graph(NaturalVisibility())\
-    .combine_identical_nodes()\
-    .draw("purple")
-
-w = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(240, 270))\
-    .process(SlidingWindow(5))\
-    .to_graph(NaturalVisibility())\
-    .combine_identical_nodes()\
-    .draw("pink")
-
-a = MultivariateTimeSeries()\
-    .add(x)\
-    .add(y)\
-    .add(z)\
-    .add(w)\
-    .link(Link(multi=True).time_coocurence())\
-    .combine_identical_nodes()\
-    .draw("red")
-
-TimeSeries()\
-    .from_csv(CsvStock(path, "Close"))\
-    .process(Segment(60, 120))\
-    .process(SlidingWindow(5))\
-    .to_graph(NaturalVisibility().with_limit(1))\
-    .combine_identical_nodes()\
-    .draw("pink")
-
-GraphSlidWin(a.return_graph())\
-    .set_nodes(a.get_graph_nodes())\
-    .choose_next_node("weighted")\
-    .choose_next_value("sequential")\
-    .skip_every_x_steps(0)\
-    .ts_length(100)\
-    .to_multiple_time_sequences()\
-    .draw()
-
-GraphSlidWin(x.return_graph())\
-    .set_nodes(x.return_graph().nodes)\
-    .choose_next_node("weighted")\
-    .choose_next_value("random")\
-    .skip_every_x_steps(1)\
-    .ts_length(50)\
-    .to_time_sequence()\
-    .draw()
-
-
-i = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(60, 80))\
-    .to_graph(NaturalVisibility())\
-    .link(Link().same_value(2))\
-    .combine_identical_nodes()\
-    .draw()
-
-j = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(120, 140))\
-    .to_graph(NaturalVisibility())\
-    .combine_identical_nodes()\
-    .draw()
-
-k = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(180, 200))\
-    .to_graph(NaturalVisibility())\
-    .combine_identical_nodes()\
-    .draw()
-
-l = TimeSeries().from_csv(CsvStock(path, "Close"))\
-    .process(Segment(240, 260))\
-    .to_graph(NaturalVisibility())\
-    .combine_identical_nodes()\
-    .draw()
-
 #TODO: convert same_value into by_value(strategy), where strategy = same_value, same_quantile, proximity_criteria, etc.
 #TODO: separate link into two objects depending on what type of graph you have.
-a = MultivariateTimeSeries()\
-    .add(i)\
-    .add(j)\
-    .add(k)\
-    .add(l)\
-    .link(Link().time_coocurence())\
-    .link(Link().same_value(2).seasonalities(15))\
-    .combine_identical_nodes()\
-    .draw("purple")    
-
-Graph(a.return_graph())\
-    .set_nodes(a.get_graph_nodes(), a.get_graph_nodes_data())\
-    .walk_through_all()\
-    .change_graphs_every_x_steps(2)\
-    .choose_next_node("random")\
-    .choose_next_value("sequential")\
-    .skip_every_x_steps(1)\
-    .ts_length(50)\
-    .to_multiple_time_sequences()\
-    .draw()
-
-
-
-Graph(i.return_graph())\
-    .set_nodes(i.return_graph().nodes, i.return_graph().nodes(data=True))\
-    .choose_next_node("weighted")\
-    .choose_next_value("random")\
-    .skip_every_x_steps(1)\
-    .ts_length(500)\
-    .to_time_sequence()\
-    .draw()
-
-GraphSlidWin(x.return_graph())\
-    .set_nodes(x.return_graph().nodes)\
-    .walk_through_all()\
-    .choose_next_node("weighted")\
-    .choose_next_value("sequential")\
-    .ts_length(100)\
-    .to_time_sequence()\
-    .draw()
-"""
