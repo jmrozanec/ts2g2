@@ -1,4 +1,4 @@
-import random
+import numpy as np
 
 class GraphToTimeseriesStrategy:
     def to_sequence(self, graph, sequence_length):
@@ -10,7 +10,7 @@ class RandomNodeSequenceGenerationStrategy(GraphToTimeseriesStrategy):
         nodes = [n for n in graph.nodes()]
 
         while len(sequence) < sequence_length:
-            node = random.choice(nodes)
+            node = np.random.choice(nodes)
             sequence = sequence + [graph.nodes[node]['value']]
 
         return sequence
@@ -21,8 +21,8 @@ class RandomNodeNeighbourSequenceGenerationStrategy(GraphToTimeseriesStrategy):
         nodes = [n for n in graph.nodes()]
 
         while len(sequence) < sequence_length:
-            node = random.choice(nodes)
-            neighbour = random.choice(graph.neighbors(node))
+            node = np.random.choice(nodes)
+            neighbour = np.random.choice([x for x in graph.neighbors(node)])
             sequence = sequence + [graph.nodes[neighbour]['value']]
 
         return sequence
@@ -30,12 +30,14 @@ class RandomNodeNeighbourSequenceGenerationStrategy(GraphToTimeseriesStrategy):
 class RandomDegreeNodeSequenceGenerationStrategy(GraphToTimeseriesStrategy):
     def to_sequence(self, graph, sequence_length):
         sequence = []
-        nodesWeightedTuples = [(n, float(len(graph.neighbors(n)))/float(len(graph.nodes()))) for n in graph.nodes()]
-        nodes = [n[0] for n in nodesWeightedTuples]
-        nodeWeights = [n[1] for n in nodesWeightedTuples]
-
+        nodes_weighted_tuples = [(n, float(len([x for x in graph.neighbors(n)]))/float(len(graph.nodes()))) for n in graph.nodes()]
+        nodes = [n[0] for n in nodes_weighted_tuples]
+        node_weights = [n[1] for n in nodes_weighted_tuples]
+        if np.min(node_weights)>0:
+            node_weights = np.round(np.divide(node_weights, np.min(node_weights)), decimals=4)
+        node_weights = np.divide(node_weights, np.sum(node_weights))
         while len(sequence) < sequence_length:
-            node = random.choice(nodes, p=nodeWeights)
+            node = np.random.choice(nodes, p=node_weights)
             sequence = sequence + [graph.nodes[node]['value']]
 
         return sequence
@@ -44,7 +46,7 @@ class RandomWalkSequenceGenerationStrategy(GraphToTimeseriesStrategy):
     def to_sequence(self, graph, sequence_length):
         sequence = []
         nodes = [n for n in graph.nodes()]
-        first_node = random.choice(nodes)
+        first_node = np.random.choice(nodes)
         node = first_node
         while len(sequence) < sequence_length:
             sequence = sequence + [graph.nodes[node]['value']]
@@ -52,7 +54,7 @@ class RandomWalkSequenceGenerationStrategy(GraphToTimeseriesStrategy):
             if len(nodes) == 0:
                 break
             else:
-                node = random.choice(nodes)
+                node = np.random.choice(nodes)
 
         return sequence
 
@@ -60,17 +62,17 @@ class RandomWalkWithRestartSequenceGenerationStrategy(GraphToTimeseriesStrategy)
     def to_sequence(self, graph, sequence_length):
         sequence = []
         nodes = [n for n in graph.nodes()]
-        first_node = random.choice(nodes)
+        first_node = np.random.choice(nodes)
         node = first_node
         while len(sequence) < sequence_length:
             sequence = sequence + [graph.nodes[node]['value']]
-            if random.random() <0.15:
+            if np.random.random() <0.15:
                 node = first_node
             else:
                 nodes = [n for n in graph.neighbors(node)]
                 if len(nodes) == 0:
                     node = first_node
                 else:
-                    node = random.choice(nodes)
+                    node = np.random.choice(nodes)
 
         return sequence

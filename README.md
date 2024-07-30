@@ -7,7 +7,9 @@ TS2G<sup>2</sup> stands for "timeseries to graphs and back". The library impleme
     g = timeseries.to_graph(NaturalVisibilityGraphStrategy())
     sequence = g.to_sequence(RandomWalkSequenceGenerationStrategy(), sequence_length=500)
 
-Many of the methods implemented in this library, are described in _Silva, Vanessa Freitas, et al. "Time series analysis via network science: Concepts and algorithms." Wiley Interdisciplinary Reviews: Data Mining and Knowledge Discovery 11.3 (2021): e1404._ Nevertheless, the library also includes additional techniques found in other works from the scientific literature.
+For a more detailed example, look at the [Amazon stocks demo](https://github.com/graph-massivizer/ts2g2/blob/main/tutorials/demo-amazon-stocks.ipynb).
+
+Many of the methods implemented in this library are described in _Silva, Vanessa Freitas, et al. "Time series analysis via network science: Concepts and algorithms." Wiley Interdisciplinary Reviews: Data Mining and Knowledge Discovery 11.3 (2021): e1404._ Nevertheless, the library also includes additional techniques found in other works from the scientific literature.
 
 This package is being developed as part of the [Graph-Massivizer](https://graph-massivizer.eu/) project. 
 The package is a joint effort between the [Jožef Stefan Institute](https://www.ijs.si/), the [University of Twente](https://www.utwente.nl/en/), the [Vrije Universiteit Amsterdam](https://vu.nl/en), the [University of Klagenfurt](https://www.aau.at/en/), the [University of Bologna](https://www.unibo.it/en), and [Peracton](https://peracton.com/).
@@ -17,15 +19,6 @@ The package is a joint effort between the [Jožef Stefan Institute](https://www.
 
 #### Implemented features
 
-<style type="text/css">
-.tg  {border-collapse:collapse;border-spacing:0;}
-.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-  overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg .tg-7btt{border-color:inherit;font-weight:bold;text-align:center;vertical-align:top}
-.tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
-</style>
 <table class="tg">
 <thead>
   <tr>
@@ -116,15 +109,6 @@ The package is a joint effort between the [Jožef Stefan Institute](https://www.
 
 #### References table
 
-<style type="text/css">
-.tg  {border-collapse:collapse;border-spacing:0;}
-.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-  overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg .tg-7btt{border-color:inherit;font-weight:bold;text-align:center;vertical-align:top}
-.tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
-</style>
 <table class="tg">
 <thead>
   <tr>

@@ -159,10 +159,14 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-*.csv
+#*.csv
 *.idea
+*.ipynb_checkpoints
 
 *.DS_Store
 drafts
 
 RELEASE.md
+*.xml
+fundimentials
+fundamential
