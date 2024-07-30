@@ -12,5 +12,6 @@
  - ensure all comments and explanations are in English
 
 # GENERAL
+ - code_implementation.py should be extracted into corresponding files into the core/generation/timeseries packages
  - We should put all of the datasets into a data folder
  - Provide a better naming convention and a tutorials walkthrough
