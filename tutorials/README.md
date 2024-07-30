@@ -10,3 +10,7 @@
  - extract oscillation.py and poskus.py code into the corresponding files.
  - better document tutorial-01, so that the reader can understand the model behind it.
  - ensure all comments and explanations are in English
+
+# GENERAL
+ - We should put all of the datasets into a data folder
+ - Provide a better naming convention and a tutorials walkthrough
